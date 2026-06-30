@@ -1,0 +1,62 @@
+/* Global reset + design-system base. Palette/typography are deliberate — see
+   the project brief's design system section. Do not swap for a default look. */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100vh;
+}
+
+body {
+  background: #0d0b08;
+  color: #ece0c8;
+  font-family: "Palatino Linotype", Palatino, serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+select option {
+  background: #201c14;
+  color: #ece0c8;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #181410;
+}
+::-webkit-scrollbar-thumb {
+  background: #2c2418;
+  border-radius: 3px;
+}
+
+/* abcjs renders SVG into a white paper panel; keep its own colors intact. */
+.abcjs-container svg {
+  max-width: 100%;
+}

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm *)",
+      "PowerShell(npm approve-scripts *)",
+      "PowerShell(npm run *)",
+      "PowerShell(Receive-Job *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git -c user.name=OrchestraAI -c user.email=huegate7@gmail.com commit -q -m ' *)"
+    ]
+  }
+}
