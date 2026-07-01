@@ -5,8 +5,9 @@ import rateLimit from "express-rate-limit";
 import { PORT, MODEL, ANTHROPIC_API_KEY, tokensForMeasures } from "./config.js";
 import { callAnthropic, extractJson } from "./anthropic.js";
 import {
-  buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt,
+  buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt, buildMelodyCheckPrompt,
 } from "./prompts.js";
+import { analyzeMelody } from "./lib/abcMelody.js";
 
 const app = express();
 
@@ -60,8 +61,56 @@ app.post("/api/blueprint", handler(async (req, res) => {
     maxTokens: Math.min(8000, 2500 + measures * 30),
   });
   const plan = extractJson(text);
+
+  // Melody accuracy pass — the canonical tune is the source of truth for every
+  // part, so verify/correct its pitches and rhythm before returning it.
+  if (plan && typeof plan.melodyAbc === "string") {
+    plan.melodyAbc = await refineMelody(plan.melodyAbc, { ...p, measures });
+  }
   res.json({ plan });
 }));
+
+// Run the melody through a focused correction pass, then validate its bar math.
+// Keeps whichever version is most correct (never returns something worse than the
+// original blueprint melody). Up to two correction attempts.
+async function refineMelody(melodyAbc, p) {
+  const ts = p.timeSignature || "4/4";
+  let best = melodyAbc;
+  let bestScore = analyzeMelody(best, ts, p.measures).problems.length;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const analysis = analyzeMelody(best, ts, p.measures);
+    let corrected;
+    try {
+      corrected = cleanMelodyLine(await callAnthropic({
+        prompt: buildMelodyCheckPrompt({ ...p, melodyAbc: best, problems: analysis.problems }),
+        maxTokens: 1500,
+      }));
+    } catch {
+      break; // network/model error — keep best so far
+    }
+    if (!corrected) break;
+    const score = analyzeMelody(corrected, ts, p.measures).problems.length;
+    if (score < bestScore || (score === 0 && attempt === 0)) {
+      best = corrected;
+      bestScore = score;
+    }
+    if (bestScore === 0) break; // clean — stop early
+  }
+  return best;
+}
+
+// Pull the single ABC melody line out of a model reply: drop fences and any
+// header lines (X:/T:/K:/…), then keep the line with the most barlines.
+function cleanMelodyLine(text) {
+  const t = (text || "").replace(/```[a-z]*/gi, "").replace(/```/g, "").trim();
+  const lines = t
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l && !/^[A-Za-z]:/.test(l));
+  if (lines.length === 0) return "";
+  return lines.sort((a, b) => b.split("|").length - a.split("|").length)[0];
+}
 
 // ── Single instrument part ───────────────────────────────────────────────────
 app.post("/api/part", handler(async (req, res) => {

@@ -6,7 +6,7 @@
 > priority is **melody accuracy across all generated parts** — keep that the
 > north star.
 
-Last worked: 2026-06-30. Repo is local-only (git initialized, not pushed).
+Last worked: 2026-07-01. Repo is local-only (git initialized, not pushed).
 
 ---
 
@@ -14,8 +14,8 @@ Last worked: 2026-06-30. Repo is local-only (git initialized, not pushed).
 
 The original Claude.ai artifact (`OrchestraAI.jsx`, a 900-line single file) has
 been turned into a **real, runnable Vite + React app with an Express proxy**.
-Phase 1 of the brief is essentially complete **except live end-to-end
-verification**, which is blocked by a model-ID 404 (see §2).
+**Phase 1 is complete** — the model-ID blocker is resolved and the full flow was
+verified live against the real API (see §2).
 
 | Phase 1 step | Status |
 | --- | --- |
@@ -23,39 +23,56 @@ verification**, which is blocked by a model-ID 404 (see §2).
 | 2. Port artifact into `src/` component structure | ✅ done |
 | 3. Build API proxy (key server-side, headers, rate limit) | ✅ done |
 | 4. Replace abcjs CDN hack with npm import | ✅ done |
-| 5. Verify full flow end-to-end (search→blueprint→parts) | ⛔ **blocked by §2** |
+| 5. Verify full flow end-to-end (search→blueprint→parts) | ✅ **done — verified live 2026-07-01** |
 
 **First melody-accuracy improvement is already in** (see §5): melody-carrying
 parts now receive the **exact per-measure notes** of the canonical melody, not
-just a prose "play the melody" instruction.
+just a prose "play the melody" instruction. This was confirmed empirically in the
+step-5 verification below.
 
 ---
 
-## 2. ⛔ OPEN BLOCKER — fix this first
+## 2. ✅ RESOLVED — model-ID 404 (was the open blocker)
 
-**Symptom:** generating anything throws `Anthropic API 404: model: claude-sonnet-4-20250514`.
+**Was:** generating anything threw `Anthropic API 404: model: claude-sonnet-4-20250514`
+— that model string was not available to this API account.
 
-**Cause:** the model string inherited from the brief
-(`claude-sonnet-4-20250514`) is not available to this API account, so the
-Messages API returns 404.
+**Fix applied (2026-07-01):** set `MODEL=claude-opus-4-8` (Opus 4.8 — chosen for
+the melody-accuracy north star). Changed in three places so it's consistent and
+nobody hits the stale default again:
+- `server/.env` (live secret file — Opus 4.8)
+- `server/config.js` default (`process.env.MODEL || "claude-opus-4-8"`)
+- `server/.env.example` template
 
-**Fix:** set `MODEL` in `server/.env` to a model ID that the account can access.
-Do **not** guess the ID from memory — confirm the current Sonnet model ID from
-the `claude-api` skill (run `/claude-api`) or the Anthropic docs/console, then:
+To switch models later, edit **only** `server/.env` (`MODEL=<id>`) and restart
+the server — `config.js` reads `process.env.MODEL`. The `node --watch` dev runner
+does **not** reload on `.env` edits: kill node and re-run `npm run dev`. Valid IDs
+per the `claude-api` skill: `claude-opus-4-8` (current), `claude-sonnet-4-6`
+(cheaper), `claude-haiku-4-5` (cheapest). **Do not** append date suffixes.
 
-```
-# server/.env
-MODEL=<current-valid-model-id>
-```
+**Step-5 live verification (2026-07-01, String Quartet, 8 measures, "Ode to Joy"):**
+- `GET /api/health` → `{ok:true, model:"claude-opus-4-8", hasKey:true}`
+- `POST /api/blueprint` → 200. `instrumentRoles` correctly keyed to the exact 4
+  requested instruments; `melodyAbc` was a correct, recognizable Ode to Joy line.
+- `POST /api/part` (Violin I, the melody carrier for mm.1-4) → 200. The returned
+  ABC **reproduced the canonical melody note-for-note** in its melody measures
+  (`F2 F2 G2 A2 | A2 G2 F2 E2 | D2 D2 E2 F2 | F3 E E4`), and switched to a higher
+  descant in mm.5-8 where its role was countermelody, not main tune. The
+  melody-accuracy injection (§5) works as designed.
+- Cello (bass role) → 200, played chord roots (D, A) in bass clef.
 
-`MODEL` is already wired as a single server-side config value
-(`server/config.js` reads `process.env.MODEL`), so this is the only change
-needed. Restart the server afterward (the `node --watch` dev runner does **not**
-reload on `.env` edits — kill node and re-run `npm run dev`).
+> ⚠️ **Test-harness gotcha (not an app bug):** `buildBlueprintPrompt` expects
+> `instruments` as an array of `{name, count}` objects (see `prompts.js:37`). A
+> manual test that sends plain strings makes `i.name` undefined and the model
+> invents a generic ensemble (Flute/Clarinet appeared). The real client
+> (`App.jsx:71`) sends `{name, count}`, so this only bites ad-hoc curl tests —
+> mirror the `{name, count}` shape when testing by hand.
 
-Once generation returns 200, finish Phase 1 step 5: run a small ensemble (String
-Quartet, 8 measures) and confirm search → blueprint → per-part generation all
-render.
+> **Node note (dev machine):** `node` is installed at
+> `C:\Program Files\nodejs\node.exe` but was **not on PATH** in the Git Bash /
+> PowerShell sessions used here (installed after the shells launched). `npm run
+> dev` from a fresh terminal works; if a shell can't find `node`, open a new one
+> or call the full path.
 
 ---
 
@@ -177,7 +194,9 @@ server/
   lib/
     abcMelody.js        splitMelodyIntoMeasures, parseMeasureRange, sliceMelody,
                         buildMelodyExcerpts  ← melody-accuracy core
-    instrMeta.js        clef per instrument, BASS/PERCUSSION guardrail sets
+    instrMeta.js        clef per instrument (strips "Trumpet 2"→"Trumpet"), guardrails
+    transpose.js        conventionalKey + writtenKeyFor: circle-of-fifths key math
+                        for transposing instruments (B♭/F/E♭)  ← read-key core
   .env.example          template (ANTHROPIC_API_KEY, MODEL, PORT)
   .env                  REAL secrets, gitignored — NOT in repo, recreate on new machine
 ```
@@ -194,7 +213,10 @@ in `groupColor()`. Tokens centralized in `src/lib/constants.js` (`S`, `SERIF`).
 
 ## 7. Remaining work (from the brief)
 
-**Finish Phase 1:** resolve §2, then verify end-to-end (step 5).
+**Phase 1:** ✅ complete (blocker resolved + end-to-end verified — see §2).
+Next natural step: browser smoke test of the actual UI (`npm run dev`, open
+http://localhost:5173, run a String Quartet through search → generate → render)
+to confirm the abcjs rendering path, not just the API responses.
 
 **Phase 2 — pre-launch hardening:**
 - Rate limit + body cap → ✅ already on the proxy (revisit limits before deploy)
@@ -208,8 +230,58 @@ in `groupColor()`. Tokens centralized in `src/lib/constants.js` (`S`, `SERIF`).
    `/api/search`) for recent songs
 3. Combined full-score view (all parts stacked, aligned by measure)
 4. PDF export
-5. Transposing-instrument support (Clarinet/Trumpet B♭, Alto Sax E♭, Horn F) —
-   abcjs supports visual transposition
+5. ✅ **Transposing-instrument support — DONE (2026-07-01).** Each part is now
+   written in its correct read key (Trumpet/Clarinet in B♭, Horn/English Horn in
+   F, Alto/Tenor Sax in E♭) with a proper K: signature and an "in B♭" label on the
+   T: line. Keys are respelled to conventional low-accidental spellings for casual
+   players. See `server/lib/transpose.js` (circle-of-fifths key math) and §5.
+
+**Also done 2026-07-01 (arranging quality, from user feedback):**
+- **Distinct parts for duplicate instruments** — 2 Trumpets now become Trumpet 1
+  and Trumpet 2 with complementary roles, not one shared line. `expandVoices()` in
+  `src/App.jsx` splits `{name,count}` into numbered voices before the blueprint.
+- **Less flat / more musical** — part prompt now demands moving accompaniment
+  (arpeggiation, countermelody, passing tones) instead of static held roots,
+  variation between repeated sections, a dynamic arc, and no unison doubling of a
+  shared instrument. Blueprint requires development across sections.
+- **Even melody distribution** — removed the "bass/percussion never melody" ban.
+  The blueprint now rotates the melody through ALL instruments (trombone, tuba,
+  cello, mallet percussion included), sizes sections by instrument count so the
+  tune has room to travel, and shifts the bass to another low voice when a bass
+  instrument is featured. Verified: an 8-bar brass quintet gave the trombone the
+  melody in mm.5-6. Only truly unpitched perc (Timpani) stays rhythmic.
+- **Playing-time estimate** — `estimateDuration()` in `src/lib/constants.js`
+  (measures × beats/measure ÷ bpm) shows a live "≈ m:ss" under the Measures
+  selector and in the summary in `ParamsPanel.jsx`. Handles compound meters (6/8).
+- **Melody accuracy pass** — the from-memory melody used to slip through with
+  wrong rhythms (e.g. Ode to Joy came back with every note doubled → overfull
+  bars). Now `/api/blueprint` runs `refineMelody()`: a focused verification call
+  (`buildMelodyCheckPrompt`) re-checks pitches against the real song + fixes bar
+  rhythms, then `analyzeMelody()` in `abcMelody.js` validates every bar sums to the
+  meter and the measure count is right, retrying up to 2×. Costs +1–2 Opus calls
+  per generation. Verified: Ode to Joy / Twinkle / Mary / Happy Birthday all come
+  back correct. Also un-scattered the melody — handoffs are now at PHRASE
+  boundaries (≥4 bars, `sectionSize` in `prompts.js`), not 2-bar fragments.
+  STILL model-from-memory (no score DB) → obscure/complex songs remain shakier;
+  anacrusis/pickup tunes make the bar count n+1 (validator tolerates, best-effort).
+  Later tuned to preserve real eighth-note/dotted rhythms (was over-flattening to
+  quarters); still can't nail exact per-measure rhythm on invented/extended
+  sections — that's what the manual editor below is for.
+- **Visual melody editor (the accuracy escape hatch)** — `VisualMelodyEditor.jsx`.
+  In Score view, "✎ Edit melody" opens an INTERACTIVE score (not raw ABC — the ABC
+  is the hidden data model). Click a note to select → toolbar for pitch ▲▼, octave,
+  duration (♪♩♩.𝅗𝅥○), ♯♮♭, delete (→rest), ＋note; or drag a note vertically to
+  change pitch. Built on abcjs `clickListener` + `dragging:true` (verified in
+  node_modules: callback is `(abcelem, tune, classes, analysis, {step,...}, ev)`
+  with `abcelem.startChar/endChar`; up-drag reports negative `step`). Edits mutate
+  the ABC at the clicked note's char range via helpers (`shiftPitch`/`setLen`/etc.,
+  all unit-tested). Live validation (`src/lib/melodyCheck.js`) + an "⌨ ABC text"
+  advanced fallback toggle. "Apply & regenerate all parts" → `applyMelodyEdit()` in
+  `App.jsx` overwrites `melodyPlan.melodyAbc` and re-runs every part against the
+  user's exact tune (`generatePart(idx, plan)` takes an explicit plan to dodge
+  stale state). Note-level accuracy is now user-guaranteed, no ABC knowledge needed.
+  NOTE: click/drag UX verified only against the abcjs API + unit tests, not a live
+  browser — worth a manual pass.
 
 **Deploy targets:** frontend → Vercel/Netlify; backend → Render/Railway (or
 Vercel serverless). Set `ANTHROPIC_API_KEY` in the host dashboard. Point the

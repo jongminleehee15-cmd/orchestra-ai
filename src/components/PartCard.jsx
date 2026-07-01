@@ -5,7 +5,7 @@ const STATUS_COLOR = { idle: "#9a8868", loading: "#c8a050", done: "#6ab898", err
 const STATUS_ICON = { idle: "○", loading: "⏳", done: "✓", error: "⚠" };
 
 export default function PartCard({ part, idx, isActive, role, S, onSelect, onGenerate }) {
-  const grp = Object.entries(INSTRUMENT_GROUPS).find(([, v]) => v.includes(part.instrName))?.[0];
+  const grp = Object.entries(INSTRUMENT_GROUPS).find(([, v]) => v.includes(part.baseName || part.instrName))?.[0];
   const col = groupColor(grp);
   const statusColor = STATUS_COLOR[part.status];
   const statusIcon = STATUS_ICON[part.status];

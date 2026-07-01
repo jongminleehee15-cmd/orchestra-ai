@@ -39,6 +39,54 @@ export function sliceMelody(measureArr, label) {
   return slice.join(" | ");
 }
 
+// Sum the durational units (in L=1/8 eighths) of one measure's note text, so we
+// can check a bar is neither short nor overfull. Tolerant of decorations, chord
+// symbols, ties/slurs, chords [CEG], and rests.
+function parseLen(s) {
+  if (!s) return 1;
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  if (/^\/+$/.test(s)) return 1 / Math.pow(2, s.length);
+  const m = s.match(/^(\d*)\/(\d+)$/);
+  if (m) return (m[1] ? parseInt(m[1], 10) : 1) / parseInt(m[2], 10);
+  return 1;
+}
+export function measureUnits(measureStr) {
+  const s = String(measureStr)
+    .replace(/![^!]*!/g, "")     // !mf! style decorations
+    .replace(/"[^"]*"/g, "")     // "chord symbol" / annotation
+    .replace(/\{[^}]*\}/g, "")   // {grace notes}
+    .replace(/[()\->~v.]/g, "")  // slurs, ties, broken rhythm, staccato dots
+    .replace(/\s+/g, "");
+  const re = /(\[[^\]]*\]|[_^=]*[a-gA-G][,']*|[zxZ])(\d+\/\d+|\d+|\/+)?/g;
+  let units = 0, m;
+  while ((m = re.exec(s)) !== null) {
+    if (!m[0]) { re.lastIndex++; continue; }
+    units += parseLen(m[2] || "");
+  }
+  return units;
+}
+
+// Check a melody line: right number of measures, and every bar sums to the meter.
+// Returns { ok, problems[] }. Bars containing tuplets are skipped (their unit math
+// differs and models rarely use them in these tunes) to avoid false positives.
+export function analyzeMelody(melodyAbc, timeSignature, expectedMeasures) {
+  const [num, den] = String(timeSignature || "4/4").split("/").map((n) => parseInt(n, 10));
+  const expected = (num || 4) * 8 / (den || 4);
+  const measures = splitMelodyIntoMeasures(melodyAbc);
+  const problems = [];
+  if (expectedMeasures && measures.length !== expectedMeasures) {
+    problems.push(`the melody has ${measures.length} measures but must have exactly ${expectedMeasures}`);
+  }
+  measures.forEach((mez, i) => {
+    if (/\(\d/.test(mez)) return; // tuplet — skip
+    const u = measureUnits(mez);
+    if (Math.abs(u - expected) > 0.01) {
+      problems.push(`measure ${i + 1} ("${mez}") = ${u} eighth-units but a ${timeSignature || "4/4"} bar must total ${expected}`);
+    }
+  });
+  return { ok: problems.length === 0, problems };
+}
+
 // Build a "measure N: <notes>" reference block for every range this part carries
 // the melody in. This is the precise, per-measure tune the part must reproduce.
 export function buildMelodyExcerpts(melodyAbc, melodySections = []) {

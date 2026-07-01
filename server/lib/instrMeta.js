@@ -18,7 +18,9 @@ export const INSTR_META = {
   Synthesizer: { clef: "treble" }, "Electric Piano": { clef: "treble" },
 };
 
-export const getMeta = (name) => INSTR_META[name] || { clef: "treble" };
+// Numbered voices ("Trumpet 1", "Violin 2") share the base instrument's metadata.
+export const baseName = (name) => String(name || "").replace(/\s+\d+$/, "");
+export const getMeta = (name) => INSTR_META[baseName(name)] || INSTR_META[name] || { clef: "treble" };
 
 // Instruments that should never be assigned the main melody.
 export const BASS_INSTRUMENTS = new Set([

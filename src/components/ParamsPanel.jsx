@@ -1,4 +1,4 @@
-import { STYLES, DENSITIES, TEMPOS_FEEL, MEASURE_OPTIONS, S as theme } from "../lib/constants.js";
+import { STYLES, DENSITIES, TEMPOS_FEEL, MEASURE_OPTIONS, estimateDuration, S as theme } from "../lib/constants.js";
 import { SecH, Chip, NavBtn, inputStyle } from "./ui.jsx";
 
 const Label = ({ children, S }) => (
@@ -42,6 +42,10 @@ export default function ParamsPanel({
         <div style={{ display: "flex", gap: "7px", flexWrap: "wrap" }}>
           {MEASURE_OPTIONS.map((m) => <Chip key={m} label={`${m}`} active={measures === m} onClick={() => setMeasures(m)} />)}
         </div>
+        <p style={{ margin: "8px 0 0", fontSize: "12px", color: S.muted }}>
+          ≈ <span style={{ color: S.gold, fontWeight: 700 }}>{estimateDuration(measures, timeSig, bpm).clock}</span> playing time
+          <span style={{ opacity: 0.7 }}> · {measures} bars of {timeSig} at {bpm} BPM</span>
+        </p>
       </div>
 
       <div>
@@ -65,6 +69,7 @@ export default function ParamsPanel({
             ["Style", style],
             ["Density", density],
             ["Parts", selectedInstrs.length || "—"],
+            ["Length", `≈ ${estimateDuration(measures, timeSig, bpm).clock}`],
           ].map(([l, v]) => (
             <div key={l}>
               <span style={{ color: S.muted }}>{l}: </span>

@@ -8,10 +8,18 @@ export default function AbcRenderer({ abcText, uid }) {
 
   useEffect(() => {
     if (!ref.current || !abcText) return;
+    // "%%measurenb 0" prints a measure number at the start of every staff line.
+    const abc = /%%\s*measurenb/.test(abcText) ? abcText : `%%measurenb 0\n${abcText}`;
+    // Fit the staff to the actual container width so wrapping breaks lines sensibly.
+    const containerWidth = ref.current.offsetWidth || 660;
+    const staffwidth = Math.max(320, Math.min(900, containerWidth - 24));
     try {
-      abcjs.renderAbc(ref.current, abcText, {
+      abcjs.renderAbc(ref.current, abc, {
         responsive: "resize",
-        staffwidth: 660,
+        staffwidth,
+        // Reflow measures across multiple lines instead of cramming the whole
+        // piece onto one squished staff line.
+        wrap: { minSpacing: 1.8, maxSpacing: 2.7, preferredMeasuresPerLine: 4 },
         scale: 1.1,
         paddingright: 20,
         paddingleft: 20,

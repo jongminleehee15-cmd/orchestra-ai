@@ -6,6 +6,19 @@ import OrchestraBuilder from "./components/OrchestraBuilder.jsx";
 import ParamsPanel from "./components/ParamsPanel.jsx";
 import ScoreView from "./components/ScoreView.jsx";
 
+// Expand [{name, count}] into distinct numbered voices so duplicate instruments
+// (e.g. 2 Trumpets) each get an independent part — Trumpet 1, Trumpet 2 — instead
+// of one shared line. `base` keeps the catalogue name for clef/group lookup.
+function expandVoices(instrs) {
+  const out = [];
+  for (const i of instrs) {
+    const n = Math.max(1, i.count || 1);
+    if (n === 1) out.push({ name: i.name, base: i.name });
+    else for (let k = 1; k <= n; k++) out.push({ name: `${i.name} ${k}`, base: i.name });
+  }
+  return out;
+}
+
 export default function App() {
   // Song (auto-filled from search)
   const [songTitle, setSongTitle] = useState("");
@@ -60,7 +73,8 @@ export default function App() {
     setError(null);
     setMelodyPlan(null);
     setPlanStatus("loading");
-    setScoreParts(selectedInstrs.map((i) => ({ instrName: i.name, instrCount: i.count, status: "idle", abcText: null, errMsg: null })));
+    const voices = expandVoices(selectedInstrs);
+    setScoreParts(voices.map((v) => ({ instrName: v.name, baseName: v.base, status: "idle", abcText: null, errMsg: null })));
     setViewIdx(0);
     setShowScore(true);
     setTab("score");
@@ -68,7 +82,7 @@ export default function App() {
     try {
       const plan = await generateBlueprint({
         songTitle, songArtist, songGenre, songNotes,
-        instruments: selectedInstrs,
+        instruments: voices.map((v) => ({ name: v.name, count: 1 })),
         style, density, key, timeSignature: timeSig, bpm, measures,
       });
       setMelodyPlan(plan);
@@ -79,20 +93,22 @@ export default function App() {
     }
   }
 
-  async function generatePart(idx) {
+  // `plan` defaults to the current melodyPlan state, but callers (e.g. the manual
+  // melody editor) can pass a freshly-edited plan to avoid a stale-state read.
+  async function generatePart(idx, plan = melodyPlan) {
     const part = scoreParts[idx];
     if (!part || part.status === "loading") return;
     setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "loading", abcText: null, errMsg: null } : p)));
-    const otherInstruments = selectedInstrs.map((i) => `${i.count}x ${i.name}`).join(", ");
+    const otherInstruments = expandVoices(selectedInstrs).map((v) => v.name).join(", ");
     try {
       const abc = await generateInstrumentABC({
         songTitle, songArtist, songGenre, songNotes,
-        instrName: part.instrName, instrCount: part.instrCount,
+        instrName: part.instrName,
         style, density, tempoFeel, key,
         timeSignature: timeSig, bpm, measures, otherInstruments,
-        role: melodyPlan?.instrumentRoles?.[part.instrName] || null,
-        melodyAbc: melodyPlan?.melodyAbc,
-        chords: melodyPlan?.chords,
+        role: plan?.instrumentRoles?.[part.instrName] || null,
+        melodyAbc: plan?.melodyAbc,
+        chords: plan?.chords,
       });
       setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc } : p)));
     } catch (e) {
@@ -106,6 +122,19 @@ export default function App() {
         // re-read latest status via closure-safe guard inside generatePart
         await generatePart(i);
       }
+    }
+  }
+
+  // Manual melody override: replace the canonical tune with the user's edited ABC
+  // and re-generate every part against it, so their exact melody is the source.
+  async function applyMelodyEdit(newMelodyAbc) {
+    const newPlan = { ...(melodyPlan || {}), melodyAbc: newMelodyAbc };
+    setMelodyPlan(newPlan);
+    setScoreParts((prev) => prev.map((p) => ({ ...p, status: "idle", abcText: null, errMsg: null })));
+    setViewIdx(0);
+    const count = scoreParts.length;
+    for (let i = 0; i < count; i++) {
+      await generatePart(i, newPlan); // instrName is stable; pass the edited plan explicitly
     }
   }
 
@@ -220,6 +249,7 @@ export default function App() {
             viewIdx={viewIdx} setViewIdx={setViewIdx}
             onGeneratePart={generatePart}
             onGenerateAll={generateAll}
+            onApplyMelody={applyMelodyEdit}
             onRetryPlan={initScore}
             onReset={resetArrangement}
           />

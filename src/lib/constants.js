@@ -26,6 +26,19 @@ export const DENSITIES   = ["Sparse", "Moderate", "Full", "Lush"];
 export const TEMPOS_FEEL  = ["Slow", "Moderate", "Upbeat", "Fast"];
 export const MEASURE_OPTIONS = [4, 8, 12, 16, 24, 32, 48, 64, 96, 128];
 
+// Rough playing time from measures + time signature + tempo. bpm is the
+// quarter-note tempo (Q:1/4=bpm), so seconds = totalQuarterBeats / bpm * 60.
+export function estimateDuration(measures, timeSig, bpm) {
+  const [num, den] = String(timeSig || "4/4").split("/").map((n) => parseInt(n, 10));
+  const beatsPerMeasure = (num || 4) * (4 / (den || 4)); // in quarter-note beats
+  const b = Number(bpm) || 100;
+  const seconds = (Number(measures) || 0) * beatsPerMeasure / b * 60;
+  let mm = Math.floor(seconds / 60);
+  let ss = Math.round(seconds % 60);
+  if (ss === 60) { mm += 1; ss = 0; }
+  return { seconds, clock: `${mm}:${String(ss).padStart(2, "0")}` };
+}
+
 export const INSTR_META = {
   Violin: { clef: "treble" }, Viola: { clef: "alto" }, Cello: { clef: "bass" },
   "Double Bass": { clef: "bass" }, Harp: { clef: "treble" }, "Classical Guitar": { clef: "treble" },

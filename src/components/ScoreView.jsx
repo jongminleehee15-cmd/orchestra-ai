@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { SERIF } from "../lib/constants.js";
 import { buildLeadSheetAbc, buildScoreAbc } from "../lib/abcHelpers.js";
 import { SecH } from "./ui.jsx";
 import AbcRenderer from "./AbcRenderer.jsx";
 import PartCard from "./PartCard.jsx";
+import VisualMelodyEditor from "./VisualMelodyEditor.jsx";
 
 export default function ScoreView({
   S, songTitle, songArtist, songKey, timeSig, bpm, style, measures,
   scoreParts, melodyPlan, planStatus, viewIdx, setViewIdx,
-  onGeneratePart, onGenerateAll, onRetryPlan, onReset,
+  onGeneratePart, onGenerateAll, onApplyMelody, onRetryPlan, onReset,
 }) {
+  const [editing, setEditing] = useState(false);
   const doneCount = scoreParts.filter((p) => p.status === "done").length;
   const totalCount = scoreParts.length;
   const anyLoading = scoreParts.some((p) => p.status === "loading");
@@ -77,12 +80,35 @@ export default function ScoreView({
 
       {leadSheetAbc && (
         <div style={{ marginBottom: "20px" }}>
-          <SecH>
-            Canonical Melody <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>— shared reference for every part</span>
-          </SecH>
-          <AbcRenderer uid="lead-melody" abcText={leadSheetAbc} />
-          {melodyPlan?.melodySummary && (
-            <p style={{ margin: "10px 2px 0", fontSize: "12px", color: S.muted, fontStyle: "italic", lineHeight: 1.6 }}>{melodyPlan.melodySummary}</p>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+            <SecH>
+              Canonical Melody <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>— shared reference for every part</span>
+            </SecH>
+            {!editing && melodyPlan?.melodyAbc && (
+              <button onClick={() => setEditing(true)} style={{ padding: "5px 12px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF, whiteSpace: "nowrap" }}>
+                ✎ Edit melody
+              </button>
+            )}
+          </div>
+
+          {editing ? (
+            <VisualMelodyEditor
+              S={S}
+              melodyAbc={melodyPlan?.melodyAbc || ""}
+              songKey={songKey}
+              timeSig={timeSig}
+              bpm={bpm}
+              measures={measures}
+              onApply={(bodyAbc) => { onApplyMelody(bodyAbc); setEditing(false); }}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <>
+              <AbcRenderer uid="lead-melody" abcText={leadSheetAbc} />
+              {melodyPlan?.melodySummary && (
+                <p style={{ margin: "10px 2px 0", fontSize: "12px", color: S.muted, fontStyle: "italic", lineHeight: 1.6 }}>{melodyPlan.melodySummary}</p>
+              )}
+            </>
           )}
         </div>
       )}
