@@ -6,7 +6,9 @@ import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
 // 1. SONG SEARCH
 // ─────────────────────────────────────────────────────────────────────────────
 export function buildSearchPrompt(query) {
-  return `You are a music knowledge database. The user searched for: "${query}"
+  return `You are a music knowledge database with web search access. The user searched for: "${query}"
+
+If the song is recent, obscure, or you are not fully certain of its key/time signature/BPM, use web search to verify before answering — accuracy matters more than speed. For songs you know with certainty, answer directly without searching.
 
 Return ONLY a JSON array of up to 6 matching songs. Each object must have exactly these fields:
 {
@@ -28,12 +30,64 @@ Rules:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 1b. SONG GROUND TRUTH (web-search research pass)
+//     Runs BEFORE the blueprint with the web_search tool enabled. Looks up the
+//     song on open chord/tab repositories so the blueprint works from verified
+//     key/chords/structure instead of the model's memory of the tune.
+// ─────────────────────────────────────────────────────────────────────────────
+export function buildGroundTruthPrompt({ songTitle, songArtist, key, timeSignature, bpm }) {
+  return `You are a music researcher with web search access. Research the song "${songTitle}"${songArtist ? ` by ${songArtist}` : ""} and extract its REAL, documented musical structure.
+
+Search open, user-contributed chord and tab repositories (Ultimate Guitar, e-chords, Chordify, AZChords, hooktheory, public ABC/folk tune databases) plus reliable references (Wikipedia, songbook listings). Prefer highly-rated/verified versions when sources disagree.
+
+The app currently believes: key ${key || "unknown"}, time ${timeSignature || "unknown"}, ${bpm || "unknown"} BPM — verify or correct these.
+
+Return ONLY a JSON object (no markdown, no prose) with exactly these fields:
+{
+  "found": true/false — false if you could not find reliable data for this exact song,
+  "key": "the documented original key, e.g. C, G, F#m",
+  "timeSignature": "e.g. 4/4, 3/4, 6/8",
+  "bpm": number,
+  "structure": ["ordered section list, e.g. Intro", "Verse", "Chorus", "Verse", "Chorus", "Bridge", "Chorus"],
+  "chordProgressions": { "Verse": ["C", "G", "Am", "F"], "Chorus": ["F", "C", "G", "C"] } — one chord per bar as documented, keyed by section name,
+  "melodyNotes": "concise factual notes on the melody itself: which section it starts in, pickup/anacrusis, characteristic rhythm (e.g. 'verse melody moves in eighth notes, dotted figure at phrase ends'), range, any documented riffs/hooks. Empty string if nothing found.",
+  "confidence": "high|medium|low — how well the sources agree",
+  "sources": ["url1", "url2"]
+}
+
+Rules:
+- Report what the sources actually say — do NOT fill gaps from memory. If sources are missing or contradictory, lower confidence or set found=false.
+- chordProgressions must contain real chord symbols in the documented key (transposing to the app's key happens later — do NOT transpose).
+- Keep the whole response under 400 words. Return ONLY the JSON.`;
+}
+
+// Render verified web data as a prompt block. Returns "" when there's nothing usable.
+export function groundTruthBlock(gt) {
+  if (!gt || gt.found === false) return "";
+  const progs = gt.chordProgressions && typeof gt.chordProgressions === "object"
+    ? Object.entries(gt.chordProgressions)
+      .map(([sec, chords]) => `  ${sec}: ${Array.isArray(chords) ? chords.join(" ") : chords}`)
+      .join("\n")
+    : "";
+  return `
+VERIFIED SONG DATA (researched from public chord/tab sources — confidence: ${gt.confidence || "unknown"}. Treat as authoritative over your memory):
+- Documented key: ${gt.key || "n/a"} | time: ${gt.timeSignature || "n/a"} | ~${gt.bpm || "n/a"} BPM
+- Song structure: ${Array.isArray(gt.structure) ? gt.structure.join(" → ") : "n/a"}
+- Chord progressions (per bar, in the documented key — transpose to the arrangement key as needed):
+${progs || "  n/a"}
+${gt.melodyNotes ? `- Melody facts: ${gt.melodyNotes}` : ""}
+Base your chords and melody on this data. Where the arrangement key differs from the documented key, transpose the progressions; keep the harmonic functions identical.
+`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 2. ARRANGEMENT BLUEPRINT (canonical melody + chords + distribution)
 //    ONE call up front. Its melody/chords become the single source of truth.
 // ─────────────────────────────────────────────────────────────────────────────
 export function buildBlueprintPrompt({
   songTitle, songArtist, songGenre, songNotes,
   instruments, style, density, key, timeSignature, bpm, measures,
+  groundTruth,
 }) {
   const instrList = instruments
     .map((i) => `${i.name}${i.count > 1 ? ` (×${i.count})` : ""}`)
@@ -64,7 +118,7 @@ KEY: ${key} | TIME: ${timeSignature} | TEMPO: ${bpm} BPM | STYLE: ${style} | DEN
 TOTAL MEASURES: ${measures}
 SECTIONS: ${sections.join(", ")}
 INSTRUMENTS: ${instrList}
-
+${groundTruthBlock(groundTruth)}
 Return ONLY a JSON object with this exact structure:
 {
   "melodyAbc": "the real, recognizable main melody as ABC note text — ONE single line, NO line breaks, NO headers, concert pitch, L:1/8 lengths (C4=half C2=quarter C=eighth), exactly ${measures} measures separated by | and ending with |]",
@@ -230,7 +284,7 @@ function buildRoleInstruction(instrName, role) {
 //    fix wrong pitches + malformed rhythms before it becomes the canonical tune.
 // ─────────────────────────────────────────────────────────────────────────────
 export function buildMelodyCheckPrompt({
-  songTitle, songArtist, key, timeSignature, measures, melodyAbc, problems,
+  songTitle, songArtist, key, timeSignature, measures, melodyAbc, problems, groundTruth,
 }) {
   const ts = timeSignature || "4/4";
   const [num, den] = String(ts).split("/").map((n) => parseInt(n, 10));
@@ -243,7 +297,7 @@ export function buildMelodyCheckPrompt({
 
 MELODY TO CHECK (single line):
 ${melodyAbc}
-${problemBlock}
+${groundTruthBlock(groundTruth)}${problemBlock}
 Produce a corrected melody where ALL of these hold:
 1. PITCH — Compare against the actual, well-known melody of this song and fix any wrong pitches so the tune is recognizably correct. Stay in ${key}, concert pitch, same overall contour and length.
 2. RHYTHM — Every bar MUST sum to exactly one ${ts} measure = ${barUnits} eighth-note units. With L:1/8: eighth=1 ("C"), quarter=2 ("C2"), dotted-quarter=3 ("C3"), half=4 ("C4"), dotted-half=6 ("C6"), whole=8 ("C8"). Fix BOTH of these: (a) if the whole line looks DOUBLED (halves where the tune moves in quarters), halve every duration; (b) RESTORE the song's characteristic shorter/faster notes — real EIGHTH-note runs and turns (length 1, e.g. "E F" not "E2 F2") and dotted figures — that were wrongly flattened into equal quarter notes or replaced by long held/whole notes. Match the tune's actual rhythm, not a simplified version.

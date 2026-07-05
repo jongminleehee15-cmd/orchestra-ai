@@ -6,6 +6,7 @@ import { PORT, MODEL, ANTHROPIC_API_KEY, tokensForMeasures } from "./config.js";
 import { callAnthropic, extractJson } from "./anthropic.js";
 import {
   buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt, buildMelodyCheckPrompt,
+  buildGroundTruthPrompt,
 } from "./prompts.js";
 import { analyzeMelody } from "./lib/abcMelody.js";
 
@@ -43,7 +44,12 @@ app.post("/api/search", handler(async (req, res) => {
   const query = String(req.body?.query || "").trim();
   if (!query) throw Object.assign(new Error("query is required"), { status: 400 });
 
-  const text = await callAnthropic({ prompt: buildSearchPrompt(query), maxTokens: 1000 });
+  const text = await callAnthropic({
+    prompt: buildSearchPrompt(query),
+    maxTokens: 2000,
+    webSearch: true,
+    maxSearches: 3,
+  });
   const songs = extractJson(text);
   res.json({ songs: Array.isArray(songs) ? songs : [] });
 }));
@@ -56,8 +62,14 @@ app.post("/api/blueprint", handler(async (req, res) => {
     throw Object.assign(new Error("instruments are required"), { status: 400 });
   }
   const measures = Number(p.measures) || 8;
+
+  // Ground-truth research pass — look the song up on public chord/tab sources
+  // with the web_search tool so the blueprint starts from documented key/chords/
+  // structure instead of the model's memory. Failure degrades to memory-only.
+  const groundTruth = await lookupGroundTruth(p);
+
   const text = await callAnthropic({
-    prompt: buildBlueprintPrompt({ ...p, measures }),
+    prompt: buildBlueprintPrompt({ ...p, measures, groundTruth }),
     maxTokens: Math.min(8000, 2500 + measures * 30),
   });
   const plan = extractJson(text);
@@ -65,10 +77,35 @@ app.post("/api/blueprint", handler(async (req, res) => {
   // Melody accuracy pass — the canonical tune is the source of truth for every
   // part, so verify/correct its pitches and rhythm before returning it.
   if (plan && typeof plan.melodyAbc === "string") {
-    plan.melodyAbc = await refineMelody(plan.melodyAbc, { ...p, measures });
+    plan.melodyAbc = await refineMelody(plan.melodyAbc, { ...p, measures, groundTruth });
   }
+  if (plan && groundTruth) plan.groundTruth = groundTruth; // surface sources/confidence to the UI
   res.json({ plan });
 }));
+
+// Fetch documented song data (key, per-section chords, structure, melody facts)
+// via web search. Returns null when nothing reliable was found or the call fails —
+// callers must treat null as "fall back to model memory".
+async function lookupGroundTruth(p) {
+  try {
+    const text = await callAnthropic({
+      prompt: buildGroundTruthPrompt(p),
+      maxTokens: 3000,
+      webSearch: true,
+      maxSearches: 5,
+    });
+    const gt = extractJson(text);
+    if (!gt || gt.found === false) {
+      console.log(`[ground-truth] no reliable data for "${p.songTitle}"`);
+      return null;
+    }
+    console.log(`[ground-truth] "${p.songTitle}": key=${gt.key} conf=${gt.confidence} sources=${(gt.sources || []).length}`);
+    return gt;
+  } catch (err) {
+    console.warn(`[ground-truth] lookup failed for "${p.songTitle}":`, err.message);
+    return null;
+  }
+}
 
 // Run the melody through a focused correction pass, then validate its bar math.
 // Keeps whichever version is most correct (never returns something worse than the
