@@ -11,7 +11,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "server:install": "npm --prefix server install",
-    "setup": "npm install && npm run server:install"
+    "setup": "npm install && npm run server:install",
+    "test": "node --test server/test/library.test.js server/test/partCheck.test.js"
   },
   "dependencies": {
     "abcjs": "^6.4.4",

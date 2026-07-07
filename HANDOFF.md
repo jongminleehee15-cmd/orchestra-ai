@@ -307,3 +307,31 @@ frontend's `/api/*` at the deployed backend.
   `max_tokens` but quality degrades on very long generations — consider chunked
   generation later.
 ```
+
+---
+
+## 10. Score library pivot (2026-07-07, branch `feature/score-library`)
+
+**Melody accuracy is now deterministic for public-domain works.** The catalog
+in `data/scores/*.abc` (7 starter works: Ode to Joy, Canon in D, Twinkle,
+Mary, Frère Jacques, Row Your Boat, Jingle Bells) holds REAL symbolic melody
+data with per-measure chords. For these works:
+
+- `/api/search` returns library hits instantly (no LLM, `source:"library"`,
+  green "✓ Exact score" badge in the UI; library browses on the search tab).
+- `/api/blueprint` + `libraryId` → melody used VERBATIM (`plan.melodyAbc` is
+  byte-identical to the score file); the LLM only plans orchestration via
+  `buildLibraryBlueprintPrompt`. No refine pass, no web lookup.
+- `/api/part` now validates melody measures against the canonical tune
+  (rhythm-exact + contour-exact, transposition-invariant —
+  `server/lib/partCheck.js`), retries once with precise diffs, and surfaces
+  remaining problems as `melodyWarnings` (shown in PartCard).
+- `npm test` (15 tests) validates the whole library + the validator. Musical
+  judgment calls documented in `ENGINE_NOTES.md`.
+- Library curation rules: L:1/8, downbeat start (no anacrusis v1), native key,
+  chords annotated per measure. Verified e2e 2026-07-07 (Ode to Joy quartet:
+  blueprint byte-identical, Viola part reproduced mm.5-8 note-for-note).
+
+Non-library songs keep the web-ground-truth + refine pipeline (§ commit
+5cedd5e). Next steps: grow the catalog, anacrusis support, MusicXML/kern
+ingestion behind the same interface.

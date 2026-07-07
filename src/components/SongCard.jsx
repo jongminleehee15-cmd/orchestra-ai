@@ -27,7 +27,17 @@ export default function SongCard({ song, onSelect, S }) {
 
         <p style={{ margin: "0 0 8px", fontSize: "13px", color: S.muted, fontStyle: "italic" }}>{song.artist}</p>
 
-        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: gc + "22", color: gc, border: `1px solid ${gc}44`, marginBottom: "10px" }}>{song.genre}</span>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "10px" }}>
+          <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: gc + "22", color: gc, border: `1px solid ${gc}44` }}>{song.genre}</span>
+          {song.source === "library" && (
+            <span
+              title="Melody comes verbatim from a real public-domain score — never reconstructed by AI"
+              style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a8a5a22", color: "#7fc491", border: "1px solid #4a8a5a55" }}
+            >
+              ✓ Exact score
+            </span>
+          )}
+        </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
           {[

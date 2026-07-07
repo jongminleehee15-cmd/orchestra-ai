@@ -166,6 +166,76 @@ Rules:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 2b. LIBRARY BLUEPRINT (orchestration plan ONLY — melody is given, verbatim)
+//     For public-domain works from data/scores the melody and chords are REAL
+//     symbolic data. The model never writes or "corrects" notes here; it only
+//     decides how the given tune travels through the ensemble.
+// ─────────────────────────────────────────────────────────────────────────────
+export function buildLibraryBlueprintPrompt({
+  songTitle, songArtist, songGenre,
+  instruments, style, density, key, timeSignature, bpm, measures,
+  melodyAbc, chords,
+}) {
+  const instrList = instruments
+    .map((i) => `${i.name}${i.count > 1 ? ` (×${i.count})` : ""}`)
+    .join(", ");
+  const voiceCount = instruments.length || 1;
+  const targetSections = Math.max(1, Math.min(voiceCount, Math.floor(measures / 4)));
+  const sectionSize = Math.max(4, Math.round(measures / Math.max(1, targetSections)));
+  const sections = [];
+  for (let m = 1; m <= measures; m += sectionSize) {
+    sections.push(`mm.${m}-${Math.min(m + sectionSize - 1, measures)}`);
+  }
+  const measureList = splitMelodyIntoMeasures(melodyAbc)
+    .map((m, i) => `  measure ${i + 1}: ${m}   [${chords[i] || ""}]`)
+    .join("\n");
+
+  return `You are a professional orchestrator. The melody and chords below come from a verified public-domain score — they are EXACT and FINAL. Your job is ONLY to plan how this fixed tune travels through the ensemble. Do NOT write, alter, or "improve" any melody notes.
+
+WORK: "${songTitle}"${songArtist ? ` by ${songArtist}` : ""}${songGenre ? ` (${songGenre})` : ""}
+KEY: ${key} | TIME: ${timeSignature} | TEMPO: ${bpm} BPM | STYLE: ${style} | DENSITY: ${density}
+TOTAL MEASURES: ${measures}
+SUGGESTED SECTION BOUNDARIES: ${sections.join(", ")} (you may adjust to phrase boundaries, but sections must be >= 4 measures where possible)
+INSTRUMENTS: ${instrList}
+
+THE MELODY (concert pitch, L:1/8) with its chord(s) per measure:
+${measureList}
+
+Return ONLY a JSON object with this exact structure:
+{
+  "melodySummary": "2-sentence description of how the melody moves through the ensemble and the dynamic arc of the arrangement",
+  "sections": [
+    {
+      "label": "section name e.g. Phrase A / Phrase B",
+      "measures": "e.g. mm.1-8",
+      "melodyCarrier": "instrument name that carries the main melody",
+      "countermelody": "instrument name for countermelody, or null",
+      "harmony": ["instruments", "on", "harmonic", "support"],
+      "bass": "instrument name for bass line",
+      "rhythm": "instrument name for rhythmic support, or null",
+      "rests": ["instruments", "tacet", "here"],
+      "notes": "brief instruction for the melody carrier"
+    }
+  ],
+  "instrumentRoles": {
+    "InstrumentName": {
+      "primaryRole": "melody|countermelody|harmony|bass|rhythm|color",
+      "melodySections": ["mm.1-8"],
+      "instruction": "specific playing instruction for the whole piece"
+    }
+  }
+}
+
+Rules:
+- Every instrument must appear in instrumentRoles
+- melodySections lists only the measures where that instrument has THE MAIN MELODY, and the union of all melodySections MUST cover all ${measures} measures with no gaps and no measure carried by two instruments at once
+- Hand the melody between instruments at section boundaries; spread it EVENLY — low instruments and mallet percussion may carry it too, with the bass line moving elsewhere for those measures
+- DISTINCT VOICES: players sharing an instrument (e.g. "Violin 1"/"Violin 2") get different roles/material, never the identical line
+- Vary the texture from section to section and plan a dynamic arc (build to a high point, then resolve)
+- Return ONLY the JSON, no markdown, no explanation`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 3. PER-INSTRUMENT PART
 //    Receives the canonical melody + chords. For measures this part carries the
 //    melody, we inject the EXACT per-measure notes so it reproduces the tune

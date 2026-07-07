@@ -1,0 +1,14 @@
+X:1
+T:Canon in D (Theme)
+C:Johann Pachelbel
+%%year 1694
+%%genre Baroque Classical
+%%mood Serene and stately
+%%aliases pachelbel canon; canon and gigue in d; wedding canon
+%%description The first two entries of the violin canon over Pachelbel's famous ground bass — the theme in calm half notes.
+M:4/4
+L:1/8
+Q:1/4=56
+K:D
+"D A" f4 e4 | "Bm F#m" d4 c4 | "G D" B4 A4 | "G A" B4 c4 |
+"D A" d4 c4 | "Bm F#m" B4 A4 | "G D" G4 F4 | "G A" G4 E4 |]

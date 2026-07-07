@@ -63,6 +63,17 @@ export default function PartCard({ part, idx, isActive, role, S, onSelect, onGen
           )}
           {part.status === "done" && part.abcText && (
             <div style={{ marginTop: "4px" }}>
+              {part.melodyWarnings?.length > 0 && (
+                <div style={{ padding: "10px 12px", marginBottom: "8px", background: "rgba(200,160,80,0.08)", border: `1px solid ${S.gold}44`, borderRadius: "4px", fontSize: "12px", color: S.gold }}>
+                  ⚠ The melody in this part still deviates from the score in {part.melodyWarnings.length} spot{part.melodyWarnings.length > 1 ? "s" : ""} — try Regenerate.
+                  <details style={{ marginTop: "4px" }}>
+                    <summary style={{ cursor: "pointer", fontSize: "11px", color: S.muted }}>details</summary>
+                    <ul style={{ margin: "6px 0 0", paddingLeft: "18px", color: S.muted, fontSize: "11px" }}>
+                      {part.melodyWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                  </details>
+                </div>
+              )}
               <AbcRenderer abcText={part.abcText} uid={`${idx}-${part.instrName.replace(/\s/g, "-")}`} />
               <details style={{ marginTop: "8px" }}>
                 <summary style={{ fontSize: "11px", color: S.muted, cursor: "pointer", letterSpacing: "0.04em" }}>View ABC source</summary>

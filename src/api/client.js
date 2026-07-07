@@ -26,14 +26,24 @@ export async function searchSongs(query) {
   return songs || [];
 }
 
+// → array of public-domain library songs (exact score data, no LLM involved)
+export async function getLibrary() {
+  const resp = await fetch("/api/library");
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok) throw new Error(data?.error || `Request failed (${resp.status})`);
+  return data?.songs || [];
+}
+
 // → blueprint plan { melodyAbc, chords, sections, instrumentRoles, melodySummary }
 export async function generateBlueprint(params) {
   const { plan } = await postJson("/api/blueprint", params);
   return plan;
 }
 
-// → ABC text for a single instrument part
+// → { abc, melodyWarnings? } for a single instrument part. melodyWarnings lists
+// any spots where the generated part still deviates from the canonical melody
+// after the server's automatic repair pass.
 export async function generateInstrumentABC(params) {
-  const { abc } = await postJson("/api/part", params);
-  return abc;
+  const { abc, melodyWarnings } = await postJson("/api/part", params);
+  return { abc, melodyWarnings: melodyWarnings || [] };
 }

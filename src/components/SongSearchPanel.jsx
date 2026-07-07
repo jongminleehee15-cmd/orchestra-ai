@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { searchSongs } from "../api/client.js";
+import { searchSongs, getLibrary } from "../api/client.js";
 import { SERIF } from "../lib/constants.js";
 import SongCard from "./SongCard.jsx";
 
@@ -14,9 +14,11 @@ export default function SongSearchPanel({ onSelect, S }) {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [err, setErr] = useState(null);
+  const [library, setLibrary] = useState([]);
   const inputRef = useRef(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => { getLibrary().then(setLibrary).catch(() => {}); }, []);
 
   async function doSearch() {
     if (!query.trim()) return;
@@ -119,6 +121,22 @@ export default function SongSearchPanel({ onSelect, S }) {
       {!loading && searched && results.length === 0 && (
         <div style={{ padding: "40px", textAlign: "center", color: S.muted, fontSize: "14px" }}>
           No results found for "{query}". Try a different search.
+        </div>
+      )}
+
+      {!loading && !searched && library.length > 0 && (
+        <div style={{ marginTop: "8px" }}>
+          <p style={{ margin: "0 0 4px", fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: S.muted }}>
+            Score library — exact public-domain melodies
+          </p>
+          <p style={{ margin: "0 0 14px", fontSize: "12px", color: S.muted, fontStyle: "italic" }}>
+            These works arrange from real score data: every note of the melody is guaranteed accurate.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            {library.map((song) => (
+              <SongCard key={song.libraryId} song={song} onSelect={onSelect} S={S} />
+            ))}
+          </div>
         </div>
       )}
     </div>

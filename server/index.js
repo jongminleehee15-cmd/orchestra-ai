@@ -6,9 +6,11 @@ import { PORT, MODEL, ANTHROPIC_API_KEY, tokensForMeasures } from "./config.js";
 import { callAnthropic, extractJson } from "./anthropic.js";
 import {
   buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt, buildMelodyCheckPrompt,
-  buildGroundTruthPrompt,
+  buildGroundTruthPrompt, buildLibraryBlueprintPrompt,
 } from "./prompts.js";
 import { analyzeMelody } from "./lib/abcMelody.js";
+import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
+import { checkPartMelody } from "./lib/partCheck.js";
 
 const app = express();
 
@@ -39,10 +41,24 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, model: MODEL, hasKey: Boolean(ANTHROPIC_API_KEY) });
 });
 
+// ── Public-domain score library ──────────────────────────────────────────────
+// Real symbolic melody data — the accuracy-first path. See server/lib/library.js.
+app.get("/api/library", (req, res) => {
+  res.json({ songs: loadLibrary().map(workToSong) });
+});
+
 // ── Song search ──────────────────────────────────────────────────────────────
+// Library matches (exact score data) come back instantly and skip the LLM
+// entirely; only unknown songs fall through to the model + web search.
 app.post("/api/search", handler(async (req, res) => {
   const query = String(req.body?.query || "").trim();
   if (!query) throw Object.assign(new Error("query is required"), { status: 400 });
+
+  const libraryHits = searchLibrary(query).map(workToSong);
+  if (libraryHits.length > 0) {
+    res.json({ songs: libraryHits });
+    return;
+  }
 
   const text = await callAnthropic({
     prompt: buildSearchPrompt(query),
@@ -62,6 +78,41 @@ app.post("/api/blueprint", handler(async (req, res) => {
     throw Object.assign(new Error("instruments are required"), { status: 400 });
   }
   const measures = Number(p.measures) || 8;
+
+  // Library path: the melody is REAL symbolic data — use it verbatim. The LLM
+  // only plans orchestration; no melody generation, no refine pass, no web
+  // lookup. This is the accuracy-first pipeline for public-domain works.
+  if (p.libraryId) {
+    const work = getWork(p.libraryId);
+    if (!work) throw Object.assign(new Error(`unknown library work: ${p.libraryId}`), { status: 404 });
+
+    // Use the requested length if the work is long enough, else the full work.
+    const useMeasures = Math.min(measures, work.measures);
+    const melodyMeasures = work.melodyMeasures.slice(0, useMeasures);
+    const melodyAbc = `${melodyMeasures.join(" | ")} |]`;
+    const chords = work.chords.slice(0, useMeasures);
+
+    const text = await callAnthropic({
+      prompt: buildLibraryBlueprintPrompt({
+        songTitle: work.title, songArtist: work.composer, songGenre: work.genre,
+        instruments: p.instruments, style: p.style, density: p.density,
+        key: work.key, timeSignature: work.timeSignature, bpm: p.bpm || work.bpm,
+        measures: useMeasures, melodyAbc, chords,
+      }),
+      maxTokens: 2500,
+    });
+    const plan = extractJson(text) || {};
+    // The melody is never the model's to change — overwrite unconditionally.
+    plan.melodyAbc = melodyAbc;
+    plan.chords = chords;
+    plan.source = "library";
+    plan.libraryId = work.id;
+    plan.key = work.key;
+    plan.timeSignature = work.timeSignature;
+    plan.measures = useMeasures;
+    res.json({ plan });
+    return;
+  }
 
   // Ground-truth research pass — look the song up on public chord/tab sources
   // with the web_search tool so the blueprint starts from documented key/chords/
@@ -154,11 +205,46 @@ app.post("/api/part", handler(async (req, res) => {
   const p = req.body || {};
   if (!p.instrName) throw Object.assign(new Error("instrName is required"), { status: 400 });
   const measures = Number(p.measures) || 8;
-  const abc = await callAnthropic({
-    prompt: buildPartPrompt({ ...p, measures }),
-    maxTokens: tokensForMeasures(measures),
-  });
-  res.json({ abc: cleanAbc(abc) });
+  const prompt = buildPartPrompt({ ...p, measures });
+  let abc = cleanAbc(await callAnthropic({ prompt, maxTokens: tokensForMeasures(measures) }));
+
+  // Arrangement accuracy: in the measures this part carries the melody it must
+  // reproduce the canonical tune (rhythm exactly; contour exactly — the check
+  // is transposition-invariant, so Bb/F/Eb parts and octave shifts pass). One
+  // repair attempt with the precise diffs; keep whichever version is cleaner.
+  const melodySections = p.role?.melodySections || [];
+  let warnings = [];
+  if (p.melodyAbc && melodySections.length > 0) {
+    const first = checkPartMelody(abc, p.melodyAbc, melodySections);
+    if (!first.ok) {
+      console.warn(`[part:${p.instrName}] melody check failed (${first.problems.length}):\n  ${first.problems.join("\n  ")}`);
+      try {
+        const retryAbc = cleanAbc(await callAnthropic({
+          prompt: `${prompt}
+
+YOUR PREVIOUS ATTEMPT GOT THE MELODY WRONG. These exact problems were detected by comparing your output against the canonical melody — fix EVERY one of them while keeping the rest of your arrangement:
+- ${first.problems.join("\n- ")}
+
+Output the FULL corrected ABC part again, raw ABC only.`,
+          maxTokens: tokensForMeasures(measures),
+        }));
+        const second = checkPartMelody(retryAbc, p.melodyAbc, melodySections);
+        if (second.problems.length < first.problems.length) {
+          abc = retryAbc;
+          warnings = second.problems;
+        } else {
+          warnings = first.problems;
+        }
+      } catch {
+        warnings = first.problems; // retry failed — keep first attempt
+      }
+      if (warnings.length > 0) {
+        console.warn(`[part:${p.instrName}] still ${warnings.length} melody problem(s) after repair`);
+      }
+    }
+  }
+
+  res.json({ abc, melodyWarnings: warnings.length ? warnings : undefined });
 }));
 
 // Strip any stray fences/prose before the leading X: header.

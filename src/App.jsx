@@ -84,7 +84,11 @@ export default function App() {
         songTitle, songArtist, songGenre, songNotes,
         instruments: voices.map((v) => ({ name: v.name, count: 1 })),
         style, density, key, timeSignature: timeSig, bpm, measures,
+        libraryId: selectedSong?.libraryId, // library works: melody used verbatim server-side
       });
+      // Library works may clamp to the work's real length — keep the UI in sync
+      // so parts are requested with the same measure count as the plan.
+      if (plan?.measures && plan.measures !== measures) setMeasures(plan.measures);
       setMelodyPlan(plan);
       setPlanStatus("done");
     } catch (e) {
@@ -101,7 +105,7 @@ export default function App() {
     setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "loading", abcText: null, errMsg: null } : p)));
     const otherInstruments = expandVoices(selectedInstrs).map((v) => v.name).join(", ");
     try {
-      const abc = await generateInstrumentABC({
+      const { abc, melodyWarnings } = await generateInstrumentABC({
         songTitle, songArtist, songGenre, songNotes,
         instrName: part.instrName,
         style, density, tempoFeel, key,
@@ -110,7 +114,7 @@ export default function App() {
         melodyAbc: plan?.melodyAbc,
         chords: plan?.chords,
       });
-      setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc } : p)));
+      setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc, melodyWarnings } : p)));
     } catch (e) {
       setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "error", errMsg: e.message } : p)));
     }

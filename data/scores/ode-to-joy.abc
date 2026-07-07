@@ -1,0 +1,16 @@
+X:1
+T:Ode to Joy
+C:Ludwig van Beethoven
+%%year 1824
+%%genre Classical
+%%mood Joyful and triumphant
+%%aliases joyful joyful we adore thee; beethoven; symphony no 9; ninth symphony; ode an die freude
+%%description Main theme from the finale of Beethoven's Symphony No. 9, also sung as the hymn "Joyful, Joyful, We Adore Thee".
+M:4/4
+L:1/8
+Q:1/4=120
+K:D
+"D" F2 F2 G2 A2 | "A" A2 G2 F2 E2 | "D" D2 D2 E2 F2 | "A" F3 E E4 |
+"D" F2 F2 G2 A2 | "A" A2 G2 F2 E2 | "D" D2 D2 E2 F2 | "A D" E3 D D4 |
+"A" E2 E2 F2 D2 | "D" E2 FG F2 D2 | "A" E2 FG F2 E2 | "D A" D2 E2 A,4 |
+"D" F2 F2 G2 A2 | "A" A2 G2 F2 E2 | "D" D2 D2 E2 F2 | "A D" E3 D D4 |]

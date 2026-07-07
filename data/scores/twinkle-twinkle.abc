@@ -1,0 +1,15 @@
+X:1
+T:Twinkle, Twinkle, Little Star
+C:Traditional
+%%year 1761
+%%genre Folk / Children's
+%%mood Gentle and innocent
+%%aliases ah vous dirai-je maman; alphabet song; baa baa black sheep melody; mozart variations
+%%description Traditional French melody ("Ah! vous dirai-je, maman"), famously set with the English lullaby text and used by Mozart for 12 variations.
+M:4/4
+L:1/8
+Q:1/4=100
+K:C
+"C" C2 C2 G2 G2 | "F C" A2 A2 G4 | "F C" F2 F2 E2 E2 | "G C" D2 D2 C4 |
+"C G7" G2 G2 F2 F2 | "C G7" E2 E2 D4 | "C G7" G2 G2 F2 F2 | "C G7" E2 E2 D4 |
+"C" C2 C2 G2 G2 | "F C" A2 A2 G4 | "F C" F2 F2 E2 E2 | "G C" D2 D2 C4 |]
