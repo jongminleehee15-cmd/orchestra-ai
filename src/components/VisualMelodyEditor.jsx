@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import abcjs from "abcjs";
 import { analyzeMelody } from "../lib/melodyCheck.js";
 import { SERIF } from "../lib/constants.js";
+import AudioPlayer from "./AudioPlayer.jsx";
 
 // ── ABC note-token helpers ────────────────────────────────────────────────────
 // A note token looks like: [accidentals][letter][octave marks][length]
@@ -223,6 +224,9 @@ export default function VisualMelodyEditor({ S, melodyAbc, songKey, timeSig, bpm
           <div ref={ref} />
         </div>
       )}
+
+      {/* Preview the edit by ear before committing to a full regenerate. */}
+      <AudioPlayer abcText={abc} S={S} hint="preview your edit" />
 
       {/* Status + actions */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginTop: "8px", flexWrap: "wrap" }}>

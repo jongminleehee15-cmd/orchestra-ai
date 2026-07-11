@@ -3,6 +3,7 @@ import { SERIF } from "../lib/constants.js";
 import { buildLeadSheetAbc, buildScoreAbc } from "../lib/abcHelpers.js";
 import { SecH } from "./ui.jsx";
 import AbcRenderer from "./AbcRenderer.jsx";
+import AudioPlayer from "./AudioPlayer.jsx";
 import PartCard from "./PartCard.jsx";
 import VisualMelodyEditor from "./VisualMelodyEditor.jsx";
 
@@ -105,6 +106,7 @@ export default function ScoreView({
           ) : (
             <>
               <AbcRenderer uid="lead-melody" abcText={leadSheetAbc} />
+              <AudioPlayer abcText={leadSheetAbc} S={S} />
               {melodyPlan?.melodySummary && (
                 <p style={{ margin: "10px 2px 0", fontSize: "12px", color: S.muted, fontStyle: "italic", lineHeight: 1.6 }}>{melodyPlan.melodySummary}</p>
               )}

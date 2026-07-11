@@ -39,23 +39,30 @@ export function estimateDuration(measures, timeSig, bpm) {
   return { seconds, clock: `${mm}:${String(ss).padStart(2, "0")}` };
 }
 
+// clef: how the part is engraved.  midi: General MIDI program for playback.
+// shift: playback-only semitone offset for transposing instruments — their
+// parts are WRITTEN above concert pitch (see server/lib/transpose.js), so
+// playback shifts them back down to sound in concert with the other parts.
+// The shift mirrors the interval the part prompt asks for (B♭ = written a
+// major 2nd up → −2; F = a 5th up → −7; alto sax in E♭ = a 6th up → −9;
+// tenor sax is written only a 2nd up in this app, so −2, not −14).
 export const INSTR_META = {
-  Violin: { clef: "treble" }, Viola: { clef: "alto" }, Cello: { clef: "bass" },
-  "Double Bass": { clef: "bass" }, Harp: { clef: "treble" }, "Classical Guitar": { clef: "treble" },
-  "French Horn": { clef: "treble" }, Trumpet: { clef: "treble" }, Flugelhorn: { clef: "treble" },
-  Trombone: { clef: "bass" }, Tuba: { clef: "bass" },
-  Flute: { clef: "treble" }, Piccolo: { clef: "treble" }, Oboe: { clef: "treble" },
-  Clarinet: { clef: "treble" }, Bassoon: { clef: "bass" }, "English Horn": { clef: "treble" },
-  "Alto Sax": { clef: "treble" }, "Tenor Sax": { clef: "treble" },
-  Timpani: { clef: "bass" }, Xylophone: { clef: "treble" }, Marimba: { clef: "treble" },
-  Vibraphone: { clef: "treble" }, Glockenspiel: { clef: "treble" }, "Tubular Bells": { clef: "treble" },
-  Piano: { clef: "treble" }, Harpsichord: { clef: "treble" }, Organ: { clef: "treble" }, Celesta: { clef: "treble" },
-  Soprano: { clef: "treble" }, "Mezzo-soprano": { clef: "treble" }, Tenor: { clef: "treble" },
-  Baritone: { clef: "bass" }, Bass: { clef: "bass" },
-  "Electric Guitar": { clef: "treble" }, "Acoustic Guitar": { clef: "treble" }, "Bass Guitar": { clef: "bass" },
-  Synthesizer: { clef: "treble" }, "Electric Piano": { clef: "treble" },
+  Violin: { clef: "treble", midi: 40 }, Viola: { clef: "alto", midi: 41 }, Cello: { clef: "bass", midi: 42 },
+  "Double Bass": { clef: "bass", midi: 43 }, Harp: { clef: "treble", midi: 46 }, "Classical Guitar": { clef: "treble", midi: 24 },
+  "French Horn": { clef: "treble", midi: 60, shift: -7 }, Trumpet: { clef: "treble", midi: 56, shift: -2 }, Flugelhorn: { clef: "treble", midi: 56, shift: -2 },
+  Trombone: { clef: "bass", midi: 57 }, Tuba: { clef: "bass", midi: 58 },
+  Flute: { clef: "treble", midi: 73 }, Piccolo: { clef: "treble", midi: 72 }, Oboe: { clef: "treble", midi: 68 },
+  Clarinet: { clef: "treble", midi: 71, shift: -2 }, Bassoon: { clef: "bass", midi: 70 }, "English Horn": { clef: "treble", midi: 69, shift: -7 },
+  "Alto Sax": { clef: "treble", midi: 65, shift: -9 }, "Tenor Sax": { clef: "treble", midi: 66, shift: -2 },
+  Timpani: { clef: "bass", midi: 47 }, Xylophone: { clef: "treble", midi: 13 }, Marimba: { clef: "treble", midi: 12 },
+  Vibraphone: { clef: "treble", midi: 11 }, Glockenspiel: { clef: "treble", midi: 9 }, "Tubular Bells": { clef: "treble", midi: 14 },
+  Piano: { clef: "treble", midi: 0 }, Harpsichord: { clef: "treble", midi: 6 }, Organ: { clef: "treble", midi: 19 }, Celesta: { clef: "treble", midi: 8 },
+  Soprano: { clef: "treble", midi: 52 }, "Mezzo-soprano": { clef: "treble", midi: 52 }, Tenor: { clef: "treble", midi: 52 },
+  Baritone: { clef: "bass", midi: 52 }, Bass: { clef: "bass", midi: 52 },
+  "Electric Guitar": { clef: "treble", midi: 27 }, "Acoustic Guitar": { clef: "treble", midi: 25 }, "Bass Guitar": { clef: "bass", midi: 33 },
+  Synthesizer: { clef: "treble", midi: 81 }, "Electric Piano": { clef: "treble", midi: 4 },
 };
-export const getMeta = (name) => INSTR_META[name] || { clef: "treble" };
+export const getMeta = (name) => INSTR_META[name] || { clef: "treble", midi: 0 };
 
 // ── Colour helpers ────────────────────────────────────────────────────────────
 export function groupColor(g) {

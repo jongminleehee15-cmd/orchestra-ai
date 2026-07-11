@@ -225,7 +225,20 @@ to confirm the abcjs rendering path, not just the API responses.
 - Better error states (malformed ABC → currently generic; see §5 validation idea)
 
 **Phase 3 — features (in priority order):**
-1. MIDI playback/export via `abcjs.synth` (no new dep)
+1. ✅ **Audio playback — DONE (2026-07-10).** `src/components/AudioPlayer.jsx`:
+   a custom-styled play/pause/stop/seek bar over `abcjs.synth.CreateSynth`
+   (lazy — the synth + soundfont download happen on first ▶; soundfonts stream
+   from abcjs's default CDN so playback needs network; only one player sounds
+   at a time via a module-level registry). Wired into: the canonical melody
+   (ScoreView), every generated part (PartCard — each part plays with its real
+   instrument sound from `INSTR_META.midi` GM programs, and transposing parts
+   are shifted back to concert pitch at playback via `INSTR_META.shift`:
+   B♭ −2, F −7, alto sax −9; tenor sax −2 because this app writes it only a
+   2nd up), and the visual melody editor (hear the edit before "Apply &
+   regenerate"). Verified via `npm run build` + `npm test` (15 pass); audio
+   itself needs a manual browser pass. MIDI/WAV **export** is still open
+   (`synth.download()` exists — easy follow-up), as is whole-ensemble playback
+   (blocked on the combined multi-voice score, item 3 below).
 2. Web-search-enabled song lookup (Anthropic `web_search` tool, server-side, on
    `/api/search`) for recent songs
 3. Combined full-score view (all parts stacked, aligned by measure)

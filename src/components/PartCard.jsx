@@ -1,11 +1,13 @@
-import { INSTRUMENT_GROUPS, groupColor, SERIF } from "../lib/constants.js";
+import { INSTRUMENT_GROUPS, getMeta, groupColor, SERIF } from "../lib/constants.js";
 import AbcRenderer from "./AbcRenderer.jsx";
+import AudioPlayer from "./AudioPlayer.jsx";
 
 const STATUS_COLOR = { idle: "#9a8868", loading: "#c8a050", done: "#6ab898", error: "#d47878" };
 const STATUS_ICON = { idle: "○", loading: "⏳", done: "✓", error: "⚠" };
 
 export default function PartCard({ part, idx, isActive, role, S, onSelect, onGenerate }) {
   const grp = Object.entries(INSTRUMENT_GROUPS).find(([, v]) => v.includes(part.baseName || part.instrName))?.[0];
+  const meta = getMeta(part.baseName || part.instrName);
   const col = groupColor(grp);
   const statusColor = STATUS_COLOR[part.status];
   const statusIcon = STATUS_ICON[part.status];
@@ -74,6 +76,14 @@ export default function PartCard({ part, idx, isActive, role, S, onSelect, onGen
                   </details>
                 </div>
               )}
+              <AudioPlayer
+                abcText={part.abcText}
+                S={S}
+                program={meta.midi ?? 0}
+                midiTranspose={meta.shift || 0}
+                chordsOff
+                hint={meta.shift ? "sounds at concert pitch" : undefined}
+              />
               <AbcRenderer abcText={part.abcText} uid={`${idx}-${part.instrName.replace(/\s/g, "-")}`} />
               <details style={{ marginTop: "8px" }}>
                 <summary style={{ fontSize: "11px", color: S.muted, cursor: "pointer", letterSpacing: "0.04em" }}>View ABC source</summary>
