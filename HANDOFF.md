@@ -235,13 +235,23 @@ to confirm the abcjs rendering path, not just the API responses.
    are shifted back to concert pitch at playback via `INSTR_META.shift`:
    B♭ −2, F −7, alto sax −9; tenor sax −2 because this app writes it only a
    2nd up), and the visual melody editor (hear the edit before "Apply &
-   regenerate"). Verified via `npm run build` + `npm test` (15 pass); audio
-   itself needs a manual browser pass. MIDI/WAV **export** is still open
-   (`synth.download()` exists — easy follow-up), as is whole-ensemble playback
-   (blocked on the combined multi-voice score, item 3 below).
+   regenerate"). Verified via `npm run build` + `npm test`; audio itself needs
+   a manual browser pass.
 2. Web-search-enabled song lookup (Anthropic `web_search` tool, server-side, on
    `/api/search`) for recent songs
-3. Combined full-score view (all parts stacked, aligned by measure)
+3. ✅ **Combined full score + ensemble recording — DONE (2026-07-11).**
+   `buildFullScoreAbc()` in `src/lib/abcHelpers.js` stacks every finished part
+   into ONE multi-voice ABC tune (`%%score` + `V:` per part). Each voice keeps
+   its own written key/clef on the page (full-score convention) but carries
+   per-voice `%%MIDI program` + `%%MIDI transpose` so playback sounds at
+   concert pitch with real instrument sounds — abcjs honors all three per
+   voice (probe-verified, and locked in by `server/test/fullScore.test.js`,
+   which engraves AND flattens the score through abcjs itself). The "Full
+   Score" section in ScoreView appears once ≥2 parts (or a solo's only part)
+   are done, updates as more finish, and its AudioPlayer has a **⬇ wav**
+   button (`downloadName` prop → `synth.download()`) that saves a recording
+   of the whole ensemble. MIDI-file export is still open if ever wanted
+   (`abcjs.synth.getMidiFile`).
 4. PDF export
 5. ✅ **Transposing-instrument support — DONE (2026-07-01).** Each part is now
    written in its correct read key (Trumpet/Clarinet in B♭, Horn/English Horn in

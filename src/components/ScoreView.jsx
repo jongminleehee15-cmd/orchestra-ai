@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { SERIF } from "../lib/constants.js";
-import { buildLeadSheetAbc, buildScoreAbc } from "../lib/abcHelpers.js";
+import { buildFullScoreAbc, buildLeadSheetAbc, buildScoreAbc } from "../lib/abcHelpers.js";
 import { SecH } from "./ui.jsx";
 import AbcRenderer from "./AbcRenderer.jsx";
 import AudioPlayer from "./AudioPlayer.jsx";
@@ -19,6 +19,13 @@ export default function ScoreView({
   const planBusy = planStatus === "loading";
 
   const leadSheetAbc = buildLeadSheetAbc(melodyPlan?.melodyAbc, { key: songKey, timeSig, bpm });
+
+  // Full score appears once there's an ensemble to stack (or the whole — solo —
+  // arrangement is done). Rebuilt from the current parts on every render.
+  const fullScoreAbc =
+    doneCount >= Math.min(2, totalCount) && doneCount > 0
+      ? buildFullScoreAbc(scoreParts, { title: songTitle, timeSig, bpm, key: songKey })
+      : null;
 
   const allDisabled = anyLoading || doneCount === totalCount || planBusy;
 
@@ -129,6 +136,22 @@ export default function ScoreView({
           />
         ))}
       </div>
+
+      {fullScoreAbc && (
+        <div style={{ marginTop: "28px" }}>
+          <SecH>
+            Full Score <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>— {doneCount < totalCount ? `${doneCount} of ${totalCount} parts so far` : "all parts"}, stacked and playing together</span>
+          </SecH>
+          <AudioPlayer
+            abcText={fullScoreAbc}
+            S={S}
+            chordsOff
+            hint="full ensemble · concert pitch"
+            downloadName={`${songTitle.replace(/\s+/g, "-")}-full-score`}
+          />
+          <AbcRenderer uid={`full-score-${doneCount}`} abcText={fullScoreAbc} />
+        </div>
+      )}
 
       <div style={{ marginTop: "28px", textAlign: "center" }}>
         <button onClick={onReset} style={{ padding: "9px 22px", background: "transparent", border: `1px solid ${S.border}`, color: S.muted, borderRadius: "4px", cursor: "pointer", fontSize: "13px", fontFamily: SERIF }}>

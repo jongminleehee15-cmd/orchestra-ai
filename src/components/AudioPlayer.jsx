@@ -20,7 +20,9 @@ function fmt(sec) {
 //                  back in concert so they match the melody and other parts)
 //   chordsOff      true = ignore chord symbols (no auto-accompaniment)
 //   hint           small label shown at the right edge (e.g. concert-pitch note)
-export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0, chordsOff = false, hint }) {
+//   downloadName   when set, shows a ⬇ button that saves the rendered audio
+//                  as "<downloadName>.wav" (the recording of the tune)
+export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0, chordsOff = false, hint, downloadName }) {
   const [status, setStatus] = useState("idle"); // idle | loading | playing | paused | error
   const [progress, setProgress] = useState(0); // 0..1 of duration
   const [duration, setDuration] = useState(0); // seconds
@@ -92,9 +94,28 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
   const fail = (e) => {
     console.warn("playback:", e);
     halt();
-    setErrMsg(String(e?.message || e) || "Playback failed");
+    const msg = String(e?.message || e) || "Playback failed";
+    setErrMsg(/load|fetch|network/i.test(msg) ? "Couldn't load instrument sounds — check your connection" : msg);
     setStatus("error");
   };
+
+  // Build + prime the synth (downloads soundfonts on first use), cache it.
+  // Leaves status at "loading" — the caller decides where to land.
+  async function ensureSynth() {
+    if (synthRef.current) return synthRef.current;
+    setStatus("loading");
+    if (!abcjs.synth.supportsAudio()) throw new Error("This browser doesn't support audio playback");
+    // "*" parses without touching the page layout.
+    const visualObj = abcjs.renderAbc("*", abcText, {})[0];
+    if (!visualObj) throw new Error("Couldn't parse the notation for playback");
+    const synth = new abcjs.synth.CreateSynth();
+    await synth.init({ visualObj, options: { program, midiTranspose, chordsOff } });
+    const primed = await synth.prime();
+    durRef.current = primed?.duration || synth.duration || 0;
+    setDuration(durRef.current);
+    synthRef.current = synth;
+    return synth;
+  }
 
   async function onPlayPause() {
     if (status === "loading" || busyRef.current) return;
@@ -111,28 +132,35 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
     busyRef.current = true;
     try {
       setErrMsg("");
-      if (!synthRef.current) {
-        setStatus("loading");
-        if (!abcjs.synth.supportsAudio()) throw new Error("This browser doesn't support audio playback");
-        // "*" parses without touching the page layout.
-        const visualObj = abcjs.renderAbc("*", abcText, {})[0];
-        if (!visualObj) throw new Error("Couldn't parse the notation for playback");
-        const synth = new abcjs.synth.CreateSynth();
-        await synth.init({ visualObj, options: { program, midiTranspose, chordsOff } });
-        const primed = await synth.prime();
-        durRef.current = primed?.duration || synth.duration || 0;
-        setDuration(durRef.current);
-        synthRef.current = synth;
-      }
+      const synth = await ensureSynth();
       claimFocus();
-      synthRef.current.start();
+      synth.start();
       startWallRef.current = performance.now();
       setProgress(0);
       stopTicker();
       rafRef.current = requestAnimationFrame(tick);
       setStatus("playing");
     } catch (e) {
-      fail(/load|fetch|network/i.test(String(e?.message)) ? new Error("Couldn't load instrument sounds — check your connection") : e);
+      fail(e);
+    } finally {
+      busyRef.current = false;
+    }
+  }
+
+  // Save the tune as a WAV file (primes the synth first if never played).
+  async function onDownload() {
+    if (busyRef.current || status === "loading") return;
+    busyRef.current = true;
+    const hadSynth = !!synthRef.current;
+    try {
+      const synth = await ensureSynth();
+      const a = document.createElement("a");
+      a.href = synth.download();
+      a.download = `${downloadName}.wav`;
+      a.click();
+      if (!hadSynth) setStatus("idle"); // ensureSynth left us at "loading"
+    } catch (e) {
+      fail(e);
     } finally {
       busyRef.current = false;
     }
@@ -199,6 +227,15 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
       )}
       {hint && status !== "error" && (
         <span style={{ fontSize: "10px", color: S.muted, whiteSpace: "nowrap", letterSpacing: "0.03em", borderLeft: `1px solid ${S.border}`, paddingLeft: "8px" }}>{hint}</span>
+      )}
+      {downloadName && status !== "error" && (
+        <button
+          onClick={onDownload}
+          title="Save a recording of this as a .wav file"
+          style={{ padding: "4px 10px", flexShrink: 0, background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "3px", cursor: status === "loading" ? "wait" : "pointer", fontSize: "11px", fontFamily: SERIF, whiteSpace: "nowrap" }}
+        >
+          ⬇ wav
+        </button>
       )}
     </div>
   );
