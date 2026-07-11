@@ -76,6 +76,17 @@ export default function PartCard({ part, idx, isActive, role, S, onSelect, onGen
                   </details>
                 </div>
               )}
+              {part.rangeWarnings?.length > 0 && (
+                <div style={{ padding: "10px 12px", marginBottom: "8px", background: "rgba(200,80,80,0.08)", border: "1px solid rgba(200,80,80,0.25)", borderRadius: "4px", fontSize: "12px", color: "#d47878" }}>
+                  ⚠ {part.rangeWarnings.length} note{part.rangeWarnings.length > 1 ? "s are" : " is"} outside {part.instrName}'s playable range — try Regenerate.
+                  <details style={{ marginTop: "4px" }}>
+                    <summary style={{ cursor: "pointer", fontSize: "11px", color: S.muted }}>details</summary>
+                    <ul style={{ margin: "6px 0 0", paddingLeft: "18px", color: S.muted, fontSize: "11px" }}>
+                      {part.rangeWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                  </details>
+                </div>
+              )}
               <AudioPlayer
                 abcText={part.abcText}
                 S={S}

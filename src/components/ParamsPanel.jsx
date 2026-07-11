@@ -1,4 +1,4 @@
-import { STYLES, DENSITIES, TEMPOS_FEEL, MEASURE_OPTIONS, estimateDuration, S as theme } from "../lib/constants.js";
+import { STYLES, DENSITIES, TEMPOS_FEEL, MEASURE_OPTIONS, estimateDuration, tempoTerm, SERIF } from "../lib/constants.js";
 import { SecH, Chip, NavBtn, inputStyle } from "./ui.jsx";
 
 const Label = ({ children, S }) => (
@@ -10,8 +10,9 @@ const Label = ({ children, S }) => (
 export default function ParamsPanel({
   S, style, setStyle, density, setDensity, tempoFeel, setTempoFeel,
   measures, setMeasures, songNotes, setSongNotes,
-  songTitle, songKey, timeSig, bpm, selectedInstrs, error, onBack, onGenerate,
+  songTitle, songKey, timeSig, bpm, setBpm, songBpm, selectedInstrs, error, onBack, onGenerate,
 }) {
+  const clampBpm = (v) => Math.max(30, Math.min(240, Math.round(v)));
   return (
     <div style={{ display: "grid", gap: "20px" }}>
       <SecH>Arrangement Parameters</SecH>
@@ -35,6 +36,38 @@ export default function ParamsPanel({
             {TEMPOS_FEEL.map((t) => <Chip key={t} label={t} active={tempoFeel === t} onClick={() => setTempoFeel(t)} />)}
           </div>
         </div>
+      </div>
+
+      <div>
+        <Label S={S}>Tempo</Label>
+        <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
+          <input
+            type="range" min={40} max={208} step={1}
+            value={Math.max(40, Math.min(208, bpm))}
+            onChange={(e) => setBpm(Number(e.target.value))}
+            style={{ flex: 1, minWidth: "200px", accentColor: S.gold, cursor: "pointer" }}
+          />
+          <input
+            type="number" min={30} max={240}
+            value={bpm}
+            onChange={(e) => { const v = parseInt(e.target.value, 10); if (!Number.isNaN(v)) setBpm(v); }}
+            onBlur={() => setBpm(clampBpm(bpm))}
+            style={{ ...inputStyle, width: "76px", textAlign: "center" }}
+          />
+          <span style={{ fontSize: "13px", color: S.gold, fontStyle: "italic", minWidth: "72px" }}>{tempoTerm(bpm)}</span>
+          {Boolean(songBpm) && bpm !== songBpm && (
+            <button
+              onClick={() => setBpm(songBpm)}
+              title="Back to the song's documented tempo"
+              style={{ padding: "5px 10px", background: "transparent", border: `1px solid ${S.border}`, color: S.muted, borderRadius: "3px", cursor: "pointer", fontSize: "11px", fontFamily: SERIF, whiteSpace: "nowrap" }}
+            >
+              ↺ song default ({songBpm})
+            </button>
+          )}
+        </div>
+        <p style={{ margin: "8px 0 0", fontSize: "12px", color: S.muted }}>
+          Quarter notes per minute — the score's Q: marking and audio playback both use exactly this.
+        </p>
       </div>
 
       <div>

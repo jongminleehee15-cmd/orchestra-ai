@@ -1,6 +1,7 @@
 import { getMeta } from "./lib/instrMeta.js";
 import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
+import { writtenRangeInfo } from "./lib/ranges.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SONG SEARCH
@@ -266,6 +267,19 @@ export function buildPartPrompt({
 - Phrase in 2- and 4-bar arcs with direction toward cadence points; use anticipations, suspensions, and tasteful space.
 - If another player shares your instrument (e.g. Trumpet 1 vs Trumpet 2), do NOT double them in unison — play a complementary voice (harmony a 3rd or 6th away, or a countermelody).`;
 
+  // Realistic playable range, in the pitch this part is WRITTEN in. Generated
+  // notes outside it are physically unplayable and get flagged by the server's
+  // range validator, so state the limits explicitly up front.
+  const range = writtenRangeInfo(instrName);
+  const rangeBlock = range
+    ? `PLAYABLE RANGE — hard physical limit for ${instrName}${transposes ? " (already converted to your WRITTEN pitch)" : ""}:
+- Absolute range: ${range.lo.name} to ${range.hi.name} — in ABC: "${range.lo.abc}" up to "${range.hi.abc}". NEVER write any note (chord notes included) outside this.
+- Comfortable core: ${range.comfortLo.name}–${range.comfortHi.name} (ABC "${range.comfortLo.abc}"–"${range.comfortHi.abc}") — keep most of the part here; touch the extremes only briefly at phrase peaks.
+- If the melody or an accompaniment figure would leave this range, shift that passage by a whole octave to fit — never clip single notes.
+- ABC octave reminder: middle C (C4) = "C"; "c" = C5, "c'" = C6, "C," = C3, "C,," = C2. Count the marks carefully.
+`
+    : "";
+
   // Transposing instruments read in a different key than concert pitch.
   const transposeBlock = transposes
     ? `TRANSPOSING INSTRUMENT — ${instrName} is a transposing instrument (${label}); the concert key is ${concertKey}:
@@ -309,6 +323,7 @@ ${roleBlock}
 ${arrangingBlock}
 
 ${transposeBlock}
+${rangeBlock}
 CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `transposed ${interval} into ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower and play the moving accompaniment described above, never a static drone.
 
 ABC NOTATION RULES:
@@ -324,7 +339,7 @@ ABC NOTATION RULES:
 - Note durations as multiples of L (C4=half, C2=quarter, C=eighth, C/2=sixteenth)
 - Dynamics: !p! !mp! !mf! !f! !ff! placed before a note
 - Slurs: (notes), ties: note-note
-- Stay in idiomatic range for ${instrName}
+- Every note must sit inside the PLAYABLE RANGE stated above — re-check your extremes before finishing
 - NO markdown, NO backticks, NO explanations — raw ABC only, starting with X:1`;
 }
 

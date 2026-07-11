@@ -40,10 +40,11 @@ export async function generateBlueprint(params) {
   return plan;
 }
 
-// → { abc, melodyWarnings? } for a single instrument part. melodyWarnings lists
-// any spots where the generated part still deviates from the canonical melody
-// after the server's automatic repair pass.
+// → { abc, melodyWarnings?, rangeWarnings? } for a single instrument part.
+// melodyWarnings: spots where the part still deviates from the canonical melody
+// after the server's automatic repair pass. rangeWarnings: notes still outside
+// the instrument's realistic playable range.
 export async function generateInstrumentABC(params) {
-  const { abc, melodyWarnings } = await postJson("/api/part", params);
-  return { abc, melodyWarnings: melodyWarnings || [] };
+  const { abc, melodyWarnings, rangeWarnings } = await postJson("/api/part", params);
+  return { abc, melodyWarnings: melodyWarnings || [], rangeWarnings: rangeWarnings || [] };
 }

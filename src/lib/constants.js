@@ -39,6 +39,17 @@ export function estimateDuration(measures, timeSig, bpm) {
   return { seconds, clock: `${mm}:${String(ss).padStart(2, "0")}` };
 }
 
+// Classical tempo term for a BPM — display only, rough boundaries.
+export function tempoTerm(bpm) {
+  if (bpm < 55) return "Largo";
+  if (bpm < 70) return "Adagio";
+  if (bpm < 90) return "Andante";
+  if (bpm < 112) return "Moderato";
+  if (bpm < 140) return "Allegro";
+  if (bpm < 170) return "Vivace";
+  return "Presto";
+}
+
 // clef: how the part is engraved.  midi: General MIDI program for playback.
 // shift: playback-only semitone offset for transposing instruments — their
 // parts are WRITTEN above concert pitch (see server/lib/transpose.js), so

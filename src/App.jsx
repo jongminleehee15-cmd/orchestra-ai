@@ -105,7 +105,7 @@ export default function App() {
     setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "loading", abcText: null, errMsg: null } : p)));
     const otherInstruments = expandVoices(selectedInstrs).map((v) => v.name).join(", ");
     try {
-      const { abc, melodyWarnings } = await generateInstrumentABC({
+      const { abc, melodyWarnings, rangeWarnings } = await generateInstrumentABC({
         songTitle, songArtist, songGenre, songNotes,
         instrName: part.instrName,
         style, density, tempoFeel, key,
@@ -114,7 +114,7 @@ export default function App() {
         melodyAbc: plan?.melodyAbc,
         chords: plan?.chords,
       });
-      setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc, melodyWarnings } : p)));
+      setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc, melodyWarnings, rangeWarnings } : p)));
     } catch (e) {
       setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "error", errMsg: e.message } : p)));
     }
@@ -232,6 +232,7 @@ export default function App() {
             style={style} setStyle={setStyle}
             density={density} setDensity={setDensity}
             tempoFeel={tempoFeel} setTempoFeel={setTempoFeel}
+            setBpm={setBpm} songBpm={selectedSong?.bpm}
             measures={measures} setMeasures={setMeasures}
             songNotes={songNotes} setSongNotes={setSongNotes}
             songTitle={songTitle} songKey={key} timeSig={timeSig} bpm={bpm}

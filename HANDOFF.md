@@ -259,6 +259,26 @@ to confirm the abcjs rendering path, not just the API responses.
    T: line. Keys are respelled to conventional low-accidental spellings for casual
    players. See `server/lib/transpose.js` (circle-of-fifths key math) and §5.
 
+**Also done 2026-07-11 (from user feedback):**
+- **Realistic instrument ranges** — `server/lib/ranges.js`: sounding-pitch
+  ranges (hard lo/hi + comfortable core, MIDI numbers) for all 39 catalog
+  instruments, converted to each part's WRITTEN pitch via the same shifts the
+  prompts use (B♭ +2, F +7, alto sax +9, tenor sax +2 — app convention). The
+  part prompt now carries a PLAYABLE RANGE block (absolute limits + comfort
+  band + ABC octave-mark reminder + "shift the passage an octave, never clip
+  notes"), and `/api/part` validates EVERY note (chord notes included) with
+  `checkPartRange`, ±1 semitone slack because the parser ignores key
+  signatures. Range + melody problems now share ONE combined repair retry
+  (tagged `[melody]`/`[range]` diffs); leftovers surface as `rangeWarnings`
+  (red box in PartCard, separate from melody warnings). 7 new tests
+  (`server/test/ranges.test.js`) incl. a sanity check that every INSTR_META
+  instrument has range data — extend both together.
+- **User-settable tempo** — ParamsPanel "Tempo" control (slider 40–208 +
+  numeric input clamped 30–240 + live classical term via `tempoTerm()` in
+  constants.js + "↺ song default" reset that reappears whenever bpm ≠ the
+  song's documented bpm). `setBpm`/`songBpm` are passed from App. bpm already
+  flowed into prompts/Q:/playback/duration everywhere, so only the UI was new.
+
 **Also done 2026-07-01 (arranging quality, from user feedback):**
 - **Distinct parts for duplicate instruments** — 2 Trumpets now become Trumpet 1
   and Trumpet 2 with complementary roles, not one shared line. `expandVoices()` in

@@ -11,6 +11,7 @@ import {
 import { analyzeMelody } from "./lib/abcMelody.js";
 import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
 import { checkPartMelody } from "./lib/partCheck.js";
+import { checkPartRange } from "./lib/ranges.js";
 
 const app = express();
 
@@ -210,41 +211,53 @@ app.post("/api/part", handler(async (req, res) => {
 
   // Arrangement accuracy: in the measures this part carries the melody it must
   // reproduce the canonical tune (rhythm exactly; contour exactly — the check
-  // is transposition-invariant, so Bb/F/Eb parts and octave shifts pass). One
+  // is transposition-invariant, so Bb/F/Eb parts and octave shifts pass), and
+  // EVERY note must sit inside the instrument's realistic written range. One
   // repair attempt with the precise diffs; keep whichever version is cleaner.
   const melodySections = p.role?.melodySections || [];
-  let warnings = [];
-  if (p.melodyAbc && melodySections.length > 0) {
-    const first = checkPartMelody(abc, p.melodyAbc, melodySections);
-    if (!first.ok) {
-      console.warn(`[part:${p.instrName}] melody check failed (${first.problems.length}):\n  ${first.problems.join("\n  ")}`);
-      try {
-        const retryAbc = cleanAbc(await callAnthropic({
-          prompt: `${prompt}
+  const checkAll = (candidate) => {
+    const melody = p.melodyAbc && melodySections.length > 0
+      ? checkPartMelody(candidate, p.melodyAbc, melodySections)
+      : { problems: [] };
+    const range = checkPartRange(candidate, p.instrName);
+    return { melody: melody.problems, range: range.problems, total: melody.problems.length + range.problems.length };
+  };
 
-YOUR PREVIOUS ATTEMPT GOT THE MELODY WRONG. These exact problems were detected by comparing your output against the canonical melody — fix EVERY one of them while keeping the rest of your arrangement:
-- ${first.problems.join("\n- ")}
+  let issues = checkAll(abc);
+  if (issues.total > 0) {
+    console.warn(`[part:${p.instrName}] checks failed (${issues.melody.length} melody, ${issues.range.length} range):\n  ${[...issues.melody, ...issues.range].join("\n  ")}`);
+    try {
+      const fixList = [
+        ...issues.melody.map((x) => `- [melody] ${x}`),
+        ...issues.range.map((x) => `- [range] ${x}`),
+      ].join("\n");
+      const retryAbc = cleanAbc(await callAnthropic({
+        prompt: `${prompt}
 
+YOUR PREVIOUS ATTEMPT HAD ERRORS, detected by automated checks against the canonical melody and the instrument's real playable range. Fix EVERY one of them while keeping the rest of your arrangement:
+${fixList}
+${issues.range.length ? "\nRange errors are notes a real player physically cannot play — move that whole passage up or down an octave (or revoice the chord) so it fits the PLAYABLE RANGE; never just clip single notes." : ""}
 Output the FULL corrected ABC part again, raw ABC only.`,
-          maxTokens: tokensForMeasures(measures),
-        }));
-        const second = checkPartMelody(retryAbc, p.melodyAbc, melodySections);
-        if (second.problems.length < first.problems.length) {
-          abc = retryAbc;
-          warnings = second.problems;
-        } else {
-          warnings = first.problems;
-        }
-      } catch {
-        warnings = first.problems; // retry failed — keep first attempt
+        maxTokens: tokensForMeasures(measures),
+      }));
+      const second = checkAll(retryAbc);
+      if (second.total < issues.total) {
+        abc = retryAbc;
+        issues = second;
       }
-      if (warnings.length > 0) {
-        console.warn(`[part:${p.instrName}] still ${warnings.length} melody problem(s) after repair`);
-      }
+    } catch {
+      // retry failed — keep first attempt and its warnings
+    }
+    if (issues.total > 0) {
+      console.warn(`[part:${p.instrName}] still ${issues.melody.length} melody / ${issues.range.length} range problem(s) after repair`);
     }
   }
 
-  res.json({ abc, melodyWarnings: warnings.length ? warnings : undefined });
+  res.json({
+    abc,
+    melodyWarnings: issues.melody.length ? issues.melody : undefined,
+    rangeWarnings: issues.range.length ? issues.range : undefined,
+  });
 }));
 
 // Strip any stray fences/prose before the leading X: header.
