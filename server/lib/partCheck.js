@@ -104,7 +104,10 @@ export function partMeasures(partAbc) {
 
 // Check every melody measure this part is responsible for.
 // Returns { ok, problems[] }.
-export function checkPartMelody(partAbc, melodyAbc, melodySections = []) {
+// measureOffset shifts REPORTED measure numbers only — used by chunked
+// generation, where the checked ABC is one section of a longer piece and
+// problems should still name piece measure numbers.
+export function checkPartMelody(partAbc, melodyAbc, melodySections = [], measureOffset = 0) {
   const canonical = splitMelodyIntoMeasures(melodyAbc);
   const part = partMeasures(partAbc);
   const problems = [];
@@ -114,11 +117,11 @@ export function checkPartMelody(partAbc, melodyAbc, melodySections = []) {
     if (!range) continue;
     for (let n = range.start; n <= range.end && n <= canonical.length; n++) {
       if (n > part.length) {
-        problems.push(`measure ${n}: missing from the part (part has only ${part.length} measures)`);
+        problems.push(`measure ${n + measureOffset}: missing from the part (it has only ${part.length} measures)`);
         continue;
       }
       if (/\(\d/.test(canonical[n - 1]) || /\(\d/.test(part[n - 1])) continue; // tuplets — skip
-      const problem = compareMeasure(canonical[n - 1], part[n - 1], n);
+      const problem = compareMeasure(canonical[n - 1], part[n - 1], n + measureOffset);
       if (problem) problems.push(problem);
     }
   }

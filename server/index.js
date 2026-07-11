@@ -8,10 +8,11 @@ import {
   buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt, buildMelodyCheckPrompt,
   buildGroundTruthPrompt, buildLibraryBlueprintPrompt,
 } from "./prompts.js";
-import { analyzeMelody } from "./lib/abcMelody.js";
+import { analyzeMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
-import { checkPartMelody } from "./lib/partCheck.js";
+import { checkPartMelody, partMeasures } from "./lib/partCheck.js";
 import { checkPartRange } from "./lib/ranges.js";
+import { CHUNK_THRESHOLD, chunkRanges, intersectSections, headerOf, stitchBody } from "./lib/chunking.js";
 
 const app = express();
 
@@ -206,6 +207,14 @@ app.post("/api/part", handler(async (req, res) => {
   const p = req.body || {};
   if (!p.instrName) throw Object.assign(new Error("instrName is required"), { status: 400 });
   const measures = Number(p.measures) || 8;
+
+  // Long parts degrade in a single call (a 64-bar request came back with 12) —
+  // above the threshold, write the part in validated ~16-measure sections.
+  if (measures > CHUNK_THRESHOLD) {
+    res.json(await generatePartChunked(p, measures));
+    return;
+  }
+
   const prompt = buildPartPrompt({ ...p, measures });
   let abc = cleanAbc(await callAnthropic({ prompt, maxTokens: tokensForMeasures(measures) }));
 
@@ -259,6 +268,93 @@ Output the FULL corrected ABC part again, raw ABC only.`,
     rangeWarnings: issues.range.length ? issues.range : undefined,
   });
 }));
+
+// Chunked generation for long parts: one model call per ~16-measure section,
+// each validated (measure count + melody + range) and repaired individually,
+// then stitched into a single part. Every call keeps the FULL musical context
+// (whole melody, all chords, role) plus the previous section's tail, so the
+// result stays one coherent line rather than disjoint fragments.
+async function generatePartChunked(p, measures) {
+  const sections = p.role?.melodySections || [];
+  const canonical = p.melodyAbc ? splitMelodyIntoMeasures(p.melodyAbc) : [];
+  const stitched = [];
+  let header = null;
+  const melodyWarnings = [];
+  const rangeWarnings = [];
+
+  for (const [start, end] of chunkRanges(measures)) {
+    const n = end - start + 1;
+    const offset = start - 1;
+    // Piece-numbered sections for the prompt; chunk-local ones for validation.
+    const absSections = intersectSections(sections, start, end, false);
+    const localSections = intersectSections(sections, start, end, true);
+    const chunkMelody = canonical.slice(start - 1, end).join(" | ");
+    const prevTail = stitched.slice(-2).join(" | ") || null;
+
+    const prompt = buildPartPrompt({
+      ...p,
+      measures,
+      role: p.role ? { ...p.role, melodySections: absSections } : null,
+      chunk: { start, end, prevTail },
+    });
+
+    const check = (candidate) => {
+      const got = partMeasures(candidate).length;
+      const structure = got === n
+        ? []
+        : [`you wrote ${got} measures but this section must contain EXACTLY ${n} (piece measures ${start}-${end})`];
+      const melody = p.melodyAbc && localSections.length > 0
+        ? checkPartMelody(candidate, chunkMelody, localSections, offset).problems
+        : [];
+      const range = checkPartRange(candidate, p.instrName, offset).problems;
+      return { structure, melody, range, total: structure.length + melody.length + range.length };
+    };
+
+    let abcChunk = cleanAbc(await callAnthropic({ prompt, maxTokens: tokensForMeasures(n) }));
+    let issues = check(abcChunk);
+    if (issues.total > 0) {
+      console.warn(`[part:${p.instrName}] section ${start}-${end} checks failed (${issues.structure.length} structure, ${issues.melody.length} melody, ${issues.range.length} range)`);
+      try {
+        const fixList = [
+          ...issues.structure.map((x) => `- [structure] ${x}`),
+          ...issues.melody.map((x) => `- [melody] ${x}`),
+          ...issues.range.map((x) => `- [range] ${x}`),
+        ].join("\n");
+        const retryAbc = cleanAbc(await callAnthropic({
+          prompt: `${prompt}
+
+YOUR PREVIOUS ATTEMPT HAD ERRORS, detected by automated checks. Fix EVERY one of them while keeping the rest of your writing:
+${fixList}
+${issues.range.length ? "\nRange errors are notes a real player physically cannot play — move that whole passage up or down an octave (or revoice the chord) so it fits the PLAYABLE RANGE; never just clip single notes." : ""}
+Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-${end}), raw ABC only.`,
+          maxTokens: tokensForMeasures(n),
+        }));
+        const second = check(retryAbc);
+        if (second.total < issues.total) {
+          abcChunk = retryAbc;
+          issues = second;
+        }
+      } catch {
+        // retry failed — keep the first attempt
+      }
+    }
+
+    // A wrong-length section would shift every later measure number — surface
+    // it loudly (melodyWarnings is the "arrangement problems" channel in the UI).
+    if (issues.structure.length) melodyWarnings.push(`measures ${start}-${end}: ${issues.structure[0]}`);
+    melodyWarnings.push(...issues.melody);
+    rangeWarnings.push(...issues.range);
+
+    if (!header) header = headerOf(abcChunk);
+    stitched.push(...partMeasures(abcChunk));
+  }
+
+  return {
+    abc: `${header}\n${stitchBody(stitched)}`,
+    melodyWarnings: melodyWarnings.length ? melodyWarnings : undefined,
+    rangeWarnings: rangeWarnings.length ? rangeWarnings : undefined,
+  };
+}
 
 // Strip any stray fences/prose before the leading X: header.
 function cleanAbc(text) {

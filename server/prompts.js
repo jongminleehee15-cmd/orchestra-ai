@@ -246,7 +246,11 @@ export function buildPartPrompt({
   songTitle, songArtist, songGenre, songNotes,
   instrName, style, density, tempoFeel, key, timeSignature, bpm, measures,
   otherInstruments, role, melodyAbc, chords,
+  // Long pieces are generated in sections: { start, end, prevTail } — write
+  // ONLY piece measures start..end; prevTail is how the previous section ended.
+  chunk = null,
 }) {
+  const writeCount = chunk ? chunk.end - chunk.start + 1 : measures;
   const { clef } = getMeta(instrName);
   // The arrangement is stored at concert pitch; work out the key THIS instrument
   // reads in (e.g. a Bb trumpet in a concert-Bb piece reads in C).
@@ -306,7 +310,21 @@ USING THE REFERENCE:
     ? `
 EXACT MELODY YOU MUST PLAY (${transposes ? `these are CONCERT pitches — rewrite each ${interval} into ${writtenKey}, keeping the shape and rhythm identical` : "reproduce these pitches/rhythms, transposed only to fit your range"}):
 ${excerpts}
-Each "measure N" above must appear as that same measure number in your output, melody intact${transposes ? ", transposed into your written key" : ""}.
+${chunk
+    ? `"measure N" above is a PIECE measure number — since this response starts at piece measure ${chunk.start}, piece measure N is measure N−${chunk.start - 1} of your output. Keep the melody intact${transposes ? ", transposed into your written key" : ""}.`
+    : `Each "measure N" above must appear as that same measure number in your output, melody intact${transposes ? ", transposed into your written key" : ""}.`}
+`
+    : "";
+
+  // Long pieces are written a section at a time — scope this response to its
+  // measure window and hand over the previous section's tail for continuity.
+  const chunkBlock = chunk
+    ? `SECTION TO WRITE NOW — the piece is ${measures} measures long and is being written in sections:
+- This response: ONLY piece measures ${chunk.start}–${chunk.end} — exactly ${writeCount} measures of music, nothing before or after.
+- Your output's FIRST measure is piece measure ${chunk.start}. All measure numbers elsewhere in this prompt are PIECE measure numbers.
+${chunk.prevTail ? `- Your part so far ends with (piece measure${chunk.start > 2 ? `s ${chunk.start - 2}–` : " "}${chunk.start - 1}): ${chunk.prevTail}
+- Continue seamlessly from that ending — connect the voice-leading and register, don't restart the figuration from scratch.` : "- This is the OPENING section of the part."}
+- Still output a complete ABC tune (X:1 through K: headers, then the ${writeCount} measures, ending with |]).
 `
     : "";
 
@@ -317,7 +335,7 @@ ${songNotes ? `NOTES: ${songNotes}` : ""}
 KEY: concert ${concertKey}${transposes ? ` — you READ in ${writtenKey} (${label})` : ""} | TIME: ${timeSignature} | TEMPO: ${bpm} BPM | STYLE: ${style} | DENSITY: ${density} | FEEL: ${tempoFeel}
 FULL ENSEMBLE: ${otherInstruments}
 TOTAL MEASURES: ${measures}
-${sharedContext}${excerptBlock}
+${chunkBlock}${sharedContext}${excerptBlock}
 ${roleBlock}
 
 ${arrangingBlock}
@@ -334,7 +352,7 @@ ABC NOTATION RULES:
 - Q:1/4=${bpm}
 - K:${writtenKey} clef=${clef}
 - Write the ENTIRE part in ${writtenKey}${transposes ? ` — this is the ${label} written key, NOT concert ${concertKey}` : ""}
-- Write exactly ${measures} measures, barlines |, end with |]
+- Write exactly ${writeCount} measures${chunk ? ` (piece measures ${chunk.start}–${chunk.end})` : ""}, barlines |, end with |]
 - Every measure's note durations MUST sum to a full ${timeSignature} measure
 - Note durations as multiples of L (C4=half, C2=quarter, C=eighth, C/2=sixteenth)
 - Dynamics: !p! !mp! !mf! !f! !ff! placed before a note

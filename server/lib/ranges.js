@@ -131,7 +131,8 @@ function measurePitches(measureStr) {
 
 // Check every note of a part against the instrument's written range.
 // Returns { ok, problems[] } in the same shape as checkPartMelody.
-export function checkPartRange(partAbc, instrName) {
+// measureOffset shifts reported measure numbers (chunked generation).
+export function checkPartRange(partAbc, instrName, measureOffset = 0) {
   const info = writtenRangeInfo(instrName);
   if (!info) return { ok: true, problems: [] };
   // ±1 semitone slack: our parser ignores the key signature, so a boundary
@@ -144,9 +145,9 @@ export function checkPartRange(partAbc, instrName) {
       const v = midiOf(tok);
       if (v === null) continue;
       if (v < lo) {
-        problems.push(`measure ${i + 1}: "${tok}" (~${midiToName(v)}) is BELOW ${instrName}'s playable range — lowest written note is ${info.lo.name} (ABC "${info.lo.abc}")`);
+        problems.push(`measure ${i + 1 + measureOffset}: "${tok}" (~${midiToName(v)}) is BELOW ${instrName}'s playable range — lowest written note is ${info.lo.name} (ABC "${info.lo.abc}")`);
       } else if (v > hi) {
-        problems.push(`measure ${i + 1}: "${tok}" (~${midiToName(v)}) is ABOVE ${instrName}'s playable range — highest written note is ${info.hi.name} (ABC "${info.hi.abc}")`);
+        problems.push(`measure ${i + 1 + measureOffset}: "${tok}" (~${midiToName(v)}) is ABOVE ${instrName}'s playable range — highest written note is ${info.hi.name} (ABC "${info.hi.abc}")`);
       }
     }
   });

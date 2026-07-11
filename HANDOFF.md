@@ -260,6 +260,18 @@ to confirm the abcjs rendering path, not just the API responses.
    players. See `server/lib/transpose.js` (circle-of-fifths key math) and §5.
 
 **Also done 2026-07-11 (from user feedback):**
+- **Chunked generation for long parts** — a 64-bar single call came back with
+  12–20 bars (observed live), so `/api/part` now writes parts longer than 24
+  measures in ~16-measure sections (`server/lib/chunking.js`: chunkRanges /
+  intersectSections / headerOf / stitchBody, all tested). Each section call
+  keeps the FULL context (whole melody, all chords, role) plus the previous
+  section's 2-bar tail for seamless voice-leading, and is validated
+  individually — measure count (the actual failure mode), melody, range —
+  with its own repair retry; `checkPartMelody`/`checkPartRange` grew a
+  `measureOffset` param so chunk reports still use piece measure numbers.
+  Sections are stitched under one header, 4 bars per line. Live-verified
+  (32-bar cello, melody mm.1-8 + 17-24): exactly 32 measures, melody resumes
+  note-for-note at the m.17 seam, zero warnings, ~16s for 2 sections.
 - **Realistic instrument ranges** — `server/lib/ranges.js`: sounding-pitch
   ranges (hard lo/hi + comfortable core, MIDI numbers) for all 39 catalog
   instruments, converted to each part's WRITTEN pitch via the same shifts the
@@ -346,9 +358,10 @@ frontend's `/api/*` at the deployed backend.
 - "Search" is model knowledge, not a licensed catalog — new/obscure songs may be
   missing or have approximate key/BPM; melodies are reconstructions from memory.
 - Copyright/licensing intentionally out of scope for this prototype phase.
-- Long pieces (96–128 measures) push token limits; `tokensForMeasures()` scales
-  `max_tokens` but quality degrades on very long generations — consider chunked
-  generation later.
+- Long pieces are handled by chunked generation (2026-07-11, see §7): parts
+  above 24 measures are written in validated ~16-bar sections, so 64–128
+  measure parts now come back full length. Cost scales with length (one model
+  call per section, plus per-section repair retries when checks fail).
 ```
 
 ---
