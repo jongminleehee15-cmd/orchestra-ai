@@ -27,7 +27,10 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
   const [progress, setProgress] = useState(0); // 0..1 of duration
   const [duration, setDuration] = useState(0); // seconds
   const [errMsg, setErrMsg] = useState("");
+  const [volume, setVolume] = useState(100); // 0..100
   const synthRef = useRef(null);
+  const gainRef = useRef(null);
+  const volumeRef = useRef(1); // 0..1, read inside applyVolume
   const durRef = useRef(0);
   const tokenRef = useRef({}); // stable identity in the one-at-a-time registry
   const rafRef = useRef(null);
@@ -38,6 +41,38 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
   const stopTicker = () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
+  };
+
+  // abcjs connects its buffer sources straight to the speakers and recreates
+  // them on every start/resume/seek — reroute them through our GainNode each
+  // time so the volume slider works (and keeps working mid-playback).
+  const applyVolume = () => {
+    const synth = synthRef.current;
+    if (!synth?.directSource?.length) return;
+    try {
+      const ac = abcjs.synth.activeAudioContext();
+      if (!ac) return;
+      if (!gainRef.current || gainRef.current.context !== ac) {
+        gainRef.current = ac.createGain();
+        gainRef.current.connect(ac.destination);
+      }
+      gainRef.current.gain.value = volumeRef.current;
+      synth.directSource.forEach((src) => {
+        try {
+          src.disconnect();
+          src.connect(gainRef.current);
+        } catch { /* source already ended */ }
+      });
+    } catch (e) {
+      console.warn("volume:", e);
+    }
+  };
+
+  const onVolume = (e) => {
+    const v = Number(e.target.value);
+    setVolume(v);
+    volumeRef.current = v / 100;
+    if (gainRef.current) gainRef.current.gain.value = volumeRef.current;
   };
 
   const tick = () => {
@@ -123,6 +158,7 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
     if (status === "paused" && synthRef.current) {
       claimFocus();
       try { synthRef.current.resume(); } catch (e) { return fail(e); }
+      applyVolume();
       stopTicker();
       rafRef.current = requestAnimationFrame(tick);
       setStatus("playing");
@@ -135,6 +171,7 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
       const synth = await ensureSynth();
       claimFocus();
       synth.start();
+      applyVolume();
       startWallRef.current = performance.now();
       setProgress(0);
       stopTicker();
@@ -182,6 +219,7 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
     const rect = e.currentTarget.getBoundingClientRect();
     const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
     try { synthRef.current.seek(ratio * durRef.current, "seconds"); } catch { return; }
+    applyVolume(); // seeking while playing recreates the audio sources
     startWallRef.current = performance.now() - ratio * durRef.current * 1000;
     setProgress(ratio);
   }
@@ -222,6 +260,15 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
           </div>
           <span style={{ fontSize: "11px", color: S.muted, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
             {duration ? `${fmt(progress * duration)} / ${fmt(duration)}` : status === "loading" ? "loading sounds…" : " "}
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: "5px", flexShrink: 0 }} title={`Volume ${volume}%`}>
+            <span style={{ fontSize: "11px", lineHeight: 1 }}>{volume === 0 ? "🔇" : volume < 50 ? "🔉" : "🔊"}</span>
+            <input
+              type="range" min={0} max={100} step={1}
+              value={volume}
+              onChange={onVolume}
+              style={{ width: "60px", accentColor: S.gold, cursor: "pointer" }}
+            />
           </span>
         </>
       )}

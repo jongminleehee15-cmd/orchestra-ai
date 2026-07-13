@@ -260,6 +260,16 @@ to confirm the abcjs rendering path, not just the API responses.
    players. See `server/lib/transpose.js` (circle-of-fifths key math) and §5.
 
 **Also done 2026-07-12 (from user feedback):**
+- **"Original" style chip** (first in STYLES + directive in styles.js): match
+  the song's own genre/groove/backing figures, impose no outside aesthetic.
+  `server/test/styles.test.js` enforces every STYLES/DENSITIES chip has a
+  directive — extend both files together.
+- **Per-player volume slider** in AudioPlayer (0-100 + 🔇/🔉/🔊 icon).
+  abcjs connects its buffer sources straight to `destination` and recreates
+  them on every start/resume/seek, so `applyVolume()` reroutes
+  `synth.directSource` through our own GainNode after each of those calls;
+  mid-playback slider changes hit the GainNode directly. Volume does NOT
+  affect the ⬇ wav download (that reads the raw buffer).
 - **Exact-length guarantee with explicit rests** — parts that stop writing
   early no longer just end: `fitMeasureCount()`/`restMeasure()` in
   chunking.js pad the tail with whole-measure rests (z8 for 4/4, meter-aware)

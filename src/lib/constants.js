@@ -21,7 +21,7 @@ export const ENSEMBLE_PRESETS = [
   { name: "Rock Band",         instruments: [{ name: "Electric Guitar", count: 2 }, { name: "Bass Guitar", count: 1 }, { name: "Piano", count: 1 }] },
 ];
 
-export const STYLES      = ["Cinematic", "Romantic", "Baroque", "Jazz", "Minimalist", "Epic", "Playful", "Mysterious", "Impressionist"];
+export const STYLES      = ["Original", "Cinematic", "Romantic", "Baroque", "Jazz", "Minimalist", "Epic", "Playful", "Mysterious", "Impressionist"];
 export const DENSITIES   = ["Sparse", "Moderate", "Full", "Lush"];
 export const TEMPOS_FEEL  = ["Slow", "Moderate", "Upbeat", "Fast"];
 export const MEASURE_OPTIONS = [4, 8, 12, 16, 24, 32, 48, 64, 96, 128];

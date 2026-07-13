@@ -8,6 +8,9 @@
 // DENSITIES in src/lib/constants.js.
 
 export const STYLE_DIRECTIVES = {
+  Original: `- Match how the song ACTUALLY sounds — its genre (see the SONG line), groove, and characteristic accompaniment patterns ARE the style guide
+- Reproduce the original recording's feel translated to this ensemble: its rhythmic signature (straight vs swung, driving vs laid-back), its typical voicings, its idiomatic backing figures
+- Impose NO outside aesthetic; when in doubt, write what the original artist's band would have played`,
   Cinematic: `- Long-breathed lines over sustained low pads; build in waves toward ONE big climax about two-thirds through, then resolve
 - Wide dynamic range — !p! swells to !ff! — with low brass/timpani reinforcing arrival points
 - At climaxes, countermelodies soar ABOVE the tune and peak measures get octave doublings`,
