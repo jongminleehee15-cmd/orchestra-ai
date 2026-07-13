@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SERIF } from "../lib/constants.js";
 import { buildFullScoreAbc, buildLeadSheetAbc, buildScoreAbc } from "../lib/abcHelpers.js";
+import { printAbc } from "../lib/print.js";
 import { SecH } from "./ui.jsx";
 import AbcRenderer from "./AbcRenderer.jsx";
 import AudioPlayer from "./AudioPlayer.jsx";
@@ -37,6 +38,20 @@ export default function ScoreView({
     a.click();
   }
 
+  const songLabel = `${songTitle}${songArtist ? ` — ${songArtist}` : ""}`;
+
+  // One print job: lead-sheet melody first, then every finished part, each on
+  // its own page — the stack you'd hand out at a rehearsal.
+  function printParts() {
+    printAbc(
+      [
+        leadSheetAbc && { abc: leadSheetAbc, subtitle: `${songLabel} · melody reference` },
+        ...scoreParts.filter((p) => p.status === "done" && p.abcText).map((p) => ({ abc: p.abcText, subtitle: songLabel })),
+      ].filter(Boolean),
+      `${songLabel} · parts`,
+    );
+  }
+
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
@@ -64,9 +79,14 @@ export default function ScoreView({
             {planBusy ? "⏳ Composing melody…" : anyLoading ? "⏳ Generating…" : doneCount === totalCount ? "✓ All Generated" : `▶ Generate All (${totalCount - doneCount} remaining)`}
           </button>
           {doneCount > 0 && (
-            <button onClick={downloadAbc} style={{ padding: "8px 16px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "4px", cursor: "pointer", fontSize: "13px", fontFamily: SERIF }}>
-              ↓ Download .abc
-            </button>
+            <>
+              <button onClick={printParts} title="Print the melody + every finished part, one per page" style={{ padding: "8px 16px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "4px", cursor: "pointer", fontSize: "13px", fontFamily: SERIF }}>
+                🖨 Print parts
+              </button>
+              <button onClick={downloadAbc} style={{ padding: "8px 16px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "4px", cursor: "pointer", fontSize: "13px", fontFamily: SERIF }}>
+                ↓ Download .abc
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -131,6 +151,7 @@ export default function ScoreView({
             isActive={viewIdx === idx}
             role={melodyPlan?.instrumentRoles?.[part.instrName]}
             S={S}
+            songLabel={songLabel}
             onSelect={setViewIdx}
             onGenerate={onGeneratePart}
           />
@@ -139,9 +160,18 @@ export default function ScoreView({
 
       {fullScoreAbc && (
         <div style={{ marginTop: "28px" }}>
-          <SecH>
-            Full Score <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>— {doneCount < totalCount ? `${doneCount} of ${totalCount} parts so far` : "all parts"}, stacked and playing together</span>
-          </SecH>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+            <SecH>
+              Full Score <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>— {doneCount < totalCount ? `${doneCount} of ${totalCount} parts so far` : "all parts"}, stacked and playing together</span>
+            </SecH>
+            <button
+              onClick={() => printAbc({ abc: fullScoreAbc, subtitle: songLabel }, `${songLabel} · Full Score`)}
+              title="Print the full score"
+              style={{ padding: "5px 12px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF, whiteSpace: "nowrap" }}
+            >
+              🖨 Print
+            </button>
+          </div>
           <AudioPlayer
             abcText={fullScoreAbc}
             S={S}

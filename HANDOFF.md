@@ -259,6 +259,15 @@ to confirm the abcjs rendering path, not just the API responses.
    T: line. Keys are respelled to conventional low-accidental spellings for casual
    players. See `server/lib/transpose.js` (circle-of-fifths key math) and §5.
 
+**Also done 2026-07-12:**
+- **Print** — `src/lib/print.js` `printAbc(items, docTitle)`: renders ABC to
+  SVG off-screen, opens a white print window (one tune per page, measure
+  numbers on, Palatino, @page margins) and calls window.print(). Wired to:
+  🖨 on each done PartCard (single part), "🖨 Print parts" in the ScoreView
+  header (lead-sheet melody + every finished part — the rehearsal handout),
+  and 🖨 Print on the Full Score section. Needs pop-ups allowed (alert says
+  so if blocked).
+
 **Also done 2026-07-11 (from user feedback):**
 - **Chunked generation for long parts** — a 64-bar single call came back with
   12–20 bars (observed live), so `/api/part` now writes parts longer than 24

@@ -1,11 +1,12 @@
 import { INSTRUMENT_GROUPS, getMeta, groupColor, SERIF } from "../lib/constants.js";
+import { printAbc } from "../lib/print.js";
 import AbcRenderer from "./AbcRenderer.jsx";
 import AudioPlayer from "./AudioPlayer.jsx";
 
 const STATUS_COLOR = { idle: "#9a8868", loading: "#c8a050", done: "#6ab898", error: "#d47878" };
 const STATUS_ICON = { idle: "○", loading: "⏳", done: "✓", error: "⚠" };
 
-export default function PartCard({ part, idx, isActive, role, S, onSelect, onGenerate }) {
+export default function PartCard({ part, idx, isActive, role, S, songLabel, onSelect, onGenerate }) {
   const grp = Object.entries(INSTRUMENT_GROUPS).find(([, v]) => v.includes(part.baseName || part.instrName))?.[0];
   const meta = getMeta(part.baseName || part.instrName);
   const col = groupColor(grp);
@@ -34,9 +35,18 @@ export default function PartCard({ part, idx, isActive, role, S, onSelect, onGen
         )}
         {part.status === "loading" && <span style={{ fontSize: "12px", color: S.gold, animation: "pulse 1s ease-in-out infinite" }}>generating…</span>}
         {part.status === "done" && (
-          <button onClick={(e) => { e.stopPropagation(); onGenerate(idx); }} style={{ padding: "5px 14px", background: "transparent", border: `1px solid ${S.border}`, color: S.muted, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF }}>
-            ↻ Regenerate
-          </button>
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); printAbc({ abc: part.abcText, subtitle: songLabel }, `${part.instrName} · ${songLabel || "part"}`); }}
+              title="Print this part"
+              style={{ padding: "5px 10px", background: "transparent", border: `1px solid ${S.border}`, color: S.muted, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF, marginRight: "6px" }}
+            >
+              🖨
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onGenerate(idx); }} style={{ padding: "5px 14px", background: "transparent", border: `1px solid ${S.border}`, color: S.muted, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF }}>
+              ↻ Regenerate
+            </button>
+          </>
         )}
       </div>
 
