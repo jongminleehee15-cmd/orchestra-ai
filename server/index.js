@@ -12,7 +12,7 @@ import { analyzeMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
 import { checkPartMelody, partMeasures } from "./lib/partCheck.js";
 import { checkPartRange, enforceRange } from "./lib/ranges.js";
-import { CHUNK_THRESHOLD, chunkRanges, intersectSections, headerOf, stitchBody } from "./lib/chunking.js";
+import { CHUNK_THRESHOLD, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount } from "./lib/chunking.js";
 
 const app = express();
 
@@ -268,12 +268,30 @@ Output the FULL corrected ABC part again, raw ABC only.`,
   if (enforced.changed) {
     abc = enforced.abc;
     console.log(`[part:${p.instrName}] range auto-fix: ${enforced.changes.join("; ")}`);
+  }
+
+  // Exact-length guarantee: a part that stops writing early gets explicit
+  // whole-measure rests to the requested length (and overruns get trimmed),
+  // so the notation stays honest and parts align bar-for-bar.
+  let lengthNote = null;
+  const got = partMeasures(abc);
+  if (got.length !== measures && headerOf(abc) !== abc) {
+    const fitted = fitMeasureCount(got, measures, p.timeSignature);
+    abc = `${headerOf(abc)}\n${stitchBody(fitted.measures)}`;
+    lengthNote = fitted.padded
+      ? `the part stopped at measure ${got.length} — measures ${got.length + 1}-${measures} are written as rests (Regenerate for a full take)`
+      : `the part ran ${fitted.trimmed} measure(s) long — trimmed to ${measures}`;
+    console.warn(`[part:${p.instrName}] length fix: ${lengthNote}`);
+  }
+
+  if (enforced.changed || lengthNote) {
     issues = checkAll(abc); // recompute warnings on the corrected part
   }
 
+  const melodyOut = [...(lengthNote ? [lengthNote] : []), ...issues.melody];
   res.json({
     abc,
-    melodyWarnings: issues.melody.length ? issues.melody : undefined,
+    melodyWarnings: melodyOut.length ? melodyOut : undefined,
     rangeWarnings: issues.range.length ? issues.range : undefined,
   });
 }));
@@ -288,8 +306,6 @@ async function generatePartChunked(p, measures) {
   const canonical = p.melodyAbc ? splitMelodyIntoMeasures(p.melodyAbc) : [];
   const stitched = [];
   let header = null;
-  let melodyWarnings = [];
-  let rangeWarnings = [];
   const structureWarnings = [];
 
   for (const [start, end] of chunkRanges(measures)) {
@@ -349,34 +365,45 @@ Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-
       }
     }
 
-    // A wrong-length section would shift every later measure number — surface
-    // it loudly (melodyWarnings is the "arrangement problems" channel in the UI).
-    if (issues.structure.length) structureWarnings.push(`measures ${start}-${end}: ${issues.structure[0]}`);
-    melodyWarnings.push(...issues.melody);
-    rangeWarnings.push(...issues.range);
-
     if (!header) header = headerOf(abcChunk);
-    stitched.push(...partMeasures(abcChunk));
+
+    // Exact-length guarantee per section: pad a short section with explicit
+    // whole-measure rests (trim an overrun) so every later section still
+    // lands on its correct piece measures and the notation stays honest.
+    const got = partMeasures(abcChunk);
+    if (got.length !== n) {
+      const fitted = fitMeasureCount(got, n, p.timeSignature);
+      structureWarnings.push(
+        fitted.padded
+          ? `measures ${start}-${end}: the section stopped ${fitted.padded} measure(s) early — the gap is written as rests (Regenerate for a full take)`
+          : `measures ${start}-${end}: the section ran ${fitted.trimmed} measure(s) long — trimmed to fit`,
+      );
+      console.warn(`[part:${p.instrName}] section ${start}-${end} length fix: ${got.length} → ${n} measures`);
+      stitched.push(...fitted.measures);
+    } else {
+      stitched.push(...got);
+    }
   }
 
   // Deterministic last resort on the assembled part: octave-correct anything
-  // still out of range, then re-derive the warning lists from the final ABC.
+  // still out of range, then derive the final warning lists from the ABC that
+  // actually ships (per-chunk problems may have been fixed along the way).
   let abc = `${header}\n${stitchBody(stitched)}`;
   const enforced = enforceRange(abc, p.instrName);
   if (enforced.changed) {
     abc = enforced.abc;
     console.log(`[part:${p.instrName}] range auto-fix: ${enforced.changes.join("; ")}`);
-    rangeWarnings = checkPartRange(abc, p.instrName).problems;
-    melodyWarnings = p.melodyAbc && sections.length > 0
-      ? checkPartMelody(abc, p.melodyAbc, sections).problems
-      : [];
   }
+  const melodyProblems = p.melodyAbc && sections.length > 0
+    ? checkPartMelody(abc, p.melodyAbc, sections).problems
+    : [];
+  const rangeProblems = checkPartRange(abc, p.instrName).problems;
 
-  const allMelody = [...structureWarnings, ...melodyWarnings];
+  const allMelody = [...structureWarnings, ...melodyProblems];
   return {
     abc,
     melodyWarnings: allMelody.length ? allMelody : undefined,
-    rangeWarnings: rangeWarnings.length ? rangeWarnings : undefined,
+    rangeWarnings: rangeProblems.length ? rangeProblems : undefined,
   };
 }
 

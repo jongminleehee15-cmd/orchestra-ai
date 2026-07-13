@@ -2,6 +2,7 @@ import { getMeta } from "./lib/instrMeta.js";
 import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
 import { writtenRangeInfo } from "./lib/ranges.js";
+import { styleBlock } from "./lib/styles.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SONG SEARCH
@@ -120,6 +121,8 @@ TOTAL MEASURES: ${measures}
 SECTIONS: ${sections.join(", ")}
 INSTRUMENTS: ${instrList}
 ${groundTruthBlock(groundTruth)}
+${styleBlock(style, density)}The STYLE and DENSITY directives shape the ORCHESTRATION — section plans, role assignments, and every "instruction"/"notes" field must concretely reflect them. The melodyAbc itself stays the song's REAL tune regardless of style.
+
 Return ONLY a JSON object with this exact structure:
 {
   "melodyAbc": "the real, recognizable main melody as ABC note text — ONE single line, NO line breaks, NO headers, concert pitch, L:1/8 lengths (C4=half C2=quarter C=eighth), exactly ${measures} measures separated by | and ending with |]",
@@ -201,6 +204,8 @@ INSTRUMENTS: ${instrList}
 
 THE MELODY (concert pitch, L:1/8) with its chord(s) per measure:
 ${measureList}
+
+${styleBlock(style, density)}The STYLE and DENSITY directives shape the ORCHESTRATION — section plans, roles, and every "instruction"/"notes" field must concretely reflect them. The melody notes stay exactly as given.
 
 Return ONLY a JSON object with this exact structure:
 {
@@ -340,6 +345,7 @@ ${roleBlock}
 
 ${arrangingBlock}
 
+${styleBlock(style, density)}
 ${transposeBlock}
 ${rangeBlock}
 CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `transposed ${interval} into ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower (or higher, for instruments whose range is above the tune), remain inside your playable range, and play the moving accompaniment described above, never a static drone.

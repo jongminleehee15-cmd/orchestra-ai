@@ -3,7 +3,7 @@
 // validators when they check a single chunk.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CHUNK_THRESHOLD, chunkRanges, intersectSections, headerOf, stitchBody } from "../lib/chunking.js";
+import { CHUNK_THRESHOLD, chunkRanges, intersectSections, headerOf, stitchBody, restMeasure, fitMeasureCount } from "../lib/chunking.js";
 import { checkPartMelody } from "../lib/partCheck.js";
 import { checkPartRange } from "../lib/ranges.js";
 
@@ -41,6 +41,27 @@ test("headerOf + stitchBody reassemble a part", () => {
   const body = stitchBody(["C8", "D8", "E8", "F8", "G8", "A8"]);
   assert.equal(body, "C8 | D8 | E8 | F8 |\nG8 | A8 |]");
   assert.ok(!body.includes("|]\n"), "only the final bar carries |]");
+});
+
+test("restMeasure matches the meter in L:1/8 units", () => {
+  assert.equal(restMeasure("4/4"), "z8");
+  assert.equal(restMeasure("3/4"), "z6");
+  assert.equal(restMeasure("6/8"), "z6");
+  assert.equal(restMeasure("2/2"), "z8");
+  assert.equal(restMeasure(undefined), "z8");
+});
+
+test("fitMeasureCount pads a short part with rests and trims an overrun", () => {
+  const short = fitMeasureCount(["C8", "D8"], 4, "4/4");
+  assert.deepEqual(short.measures, ["C8", "D8", "z8", "z8"]);
+  assert.equal(short.padded, 2);
+  assert.equal(short.trimmed, 0);
+  const long = fitMeasureCount(["C8", "D8", "E8"], 2, "4/4");
+  assert.deepEqual(long.measures, ["C8", "D8"]);
+  assert.equal(long.trimmed, 1);
+  const exact = fitMeasureCount(["C8", "D8"], 2, "4/4");
+  assert.deepEqual(exact.measures, ["C8", "D8"]);
+  assert.equal(exact.padded + exact.trimmed, 0);
 });
 
 test("validators report PIECE measure numbers when given a chunk offset", () => {

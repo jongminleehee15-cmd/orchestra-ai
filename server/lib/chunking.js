@@ -52,6 +52,26 @@ export function headerOf(abc) {
   return kIdx >= 0 ? lines.slice(0, kIdx + 1).join("\n") : String(abc);
 }
 
+// One whole-measure rest for a meter, in L:1/8 units (4/4 → "z8", 3/4 → "z6").
+export function restMeasure(timeSignature) {
+  const [num, den] = String(timeSignature || "4/4").split("/").map((x) => parseInt(x, 10));
+  const units = ((num || 4) * 8) / (den || 4);
+  return `z${Number.isInteger(units) && units > 0 ? units : 8}`;
+}
+
+// Force a part to EXACTLY `target` measures: pad the tail with whole-measure
+// rests when the model stopped writing early, trim extras when it overran.
+// Explicit rests keep the notation honest and every part aligned bar-for-bar.
+// Returns { measures, padded, trimmed }.
+export function fitMeasureCount(measureArr, target, timeSignature) {
+  const padded = Math.max(0, target - measureArr.length);
+  const trimmed = Math.max(0, measureArr.length - target);
+  const out = measureArr.slice(0, target);
+  const rest = restMeasure(timeSignature);
+  while (out.length < target) out.push(rest);
+  return { measures: out, padded, trimmed };
+}
+
 // Reassemble stitched measures into a body: 4 bars per line, final |].
 export function stitchBody(measures) {
   const lines = [];

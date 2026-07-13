@@ -259,6 +259,25 @@ to confirm the abcjs rendering path, not just the API responses.
    T: line. Keys are respelled to conventional low-accidental spellings for casual
    players. See `server/lib/transpose.js` (circle-of-fifths key math) and §5.
 
+**Also done 2026-07-12 (from user feedback):**
+- **Exact-length guarantee with explicit rests** — parts that stop writing
+  early no longer just end: `fitMeasureCount()`/`restMeasure()` in
+  chunking.js pad the tail with whole-measure rests (z8 for 4/4, meter-aware)
+  or trim overruns, on BOTH part paths (chunked: per section, keeping later
+  sections aligned to their piece measures). A clear warning names the padded
+  measures. Chunked warnings are now always re-derived from the final
+  stitched ABC (stale per-chunk problems no longer surface).
+- **Styles now actually change the arrangement** — "STYLE: Jazz" as a bare
+  word did nothing. `server/lib/styles.js` gives every STYLES entry concrete
+  directives (rhythm feel, harmony, texture, articulation, dynamics — e.g.
+  Jazz: swing + 7th/9th chords + comping stabs; Minimalist: 1-2 bar cells
+  evolving one note per repetition) and every DENSITIES entry a texture
+  rule; injected into part + both blueprint prompts (blueprints told style
+  shapes ORCHESTRATION only, the melody stays the real tune). Keys must stay
+  in sync with STYLES/DENSITIES in src/lib/constants.js. Live A/B verified:
+  identical piano request in Jazz vs Minimalist → syncopated Cmaj7/G7 stabs
+  with rests vs unbroken evolving arpeggio pulse.
+
 **Also done 2026-07-12:**
 - **Range enforcement made deterministic** (user saw flute/oboe below their
   floor even with the range prompt+retry). Two fixes: (1) the accompaniment
