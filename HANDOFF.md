@@ -260,6 +260,17 @@ to confirm the abcjs rendering path, not just the API responses.
    players. See `server/lib/transpose.js` (circle-of-fifths key math) and §5.
 
 **Also done 2026-07-12:**
+- **Range enforcement made deterministic** (user saw flute/oboe below their
+  floor even with the range prompt+retry). Two fixes: (1) the accompaniment
+  prompts said "sit BELOW the melody", which pushed high woodwinds under
+  their floor — now "below, or ABOVE when your range lies over the melody;
+  never leave your range to get clear of it". (2) `enforceRange()` in
+  ranges.js runs after generation+retry on BOTH part paths and
+  octave-corrects anything still outside the range: whole-measure shifts
+  first (contour-preserving, melody-check-safe), per-note only when the
+  measure spans too wide; warnings are recomputed from the corrected ABC.
+  Live-verified: a flute handed a G3-centred melody returned it an octave up,
+  lowest note G4, no warnings.
 - **Print** — `src/lib/print.js` `printAbc(items, docTitle)`: renders ABC to
   SVG off-screen, opens a white print window (one tune per page, measure
   numbers on, Palatino, @page margins) and calls window.print(). Wired to:

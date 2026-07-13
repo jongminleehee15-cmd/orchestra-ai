@@ -11,7 +11,7 @@ import {
 import { analyzeMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
 import { checkPartMelody, partMeasures } from "./lib/partCheck.js";
-import { checkPartRange } from "./lib/ranges.js";
+import { checkPartRange, enforceRange } from "./lib/ranges.js";
 import { CHUNK_THRESHOLD, chunkRanges, intersectSections, headerOf, stitchBody } from "./lib/chunking.js";
 
 const app = express();
@@ -262,6 +262,15 @@ Output the FULL corrected ABC part again, raw ABC only.`,
     }
   }
 
+  // Deterministic last resort: the prompt + retry can still ship unplayable
+  // notes (seen live: flute/oboe below their floor) — octave-correct them.
+  const enforced = enforceRange(abc, p.instrName);
+  if (enforced.changed) {
+    abc = enforced.abc;
+    console.log(`[part:${p.instrName}] range auto-fix: ${enforced.changes.join("; ")}`);
+    issues = checkAll(abc); // recompute warnings on the corrected part
+  }
+
   res.json({
     abc,
     melodyWarnings: issues.melody.length ? issues.melody : undefined,
@@ -279,8 +288,9 @@ async function generatePartChunked(p, measures) {
   const canonical = p.melodyAbc ? splitMelodyIntoMeasures(p.melodyAbc) : [];
   const stitched = [];
   let header = null;
-  const melodyWarnings = [];
-  const rangeWarnings = [];
+  let melodyWarnings = [];
+  let rangeWarnings = [];
+  const structureWarnings = [];
 
   for (const [start, end] of chunkRanges(measures)) {
     const n = end - start + 1;
@@ -341,7 +351,7 @@ Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-
 
     // A wrong-length section would shift every later measure number — surface
     // it loudly (melodyWarnings is the "arrangement problems" channel in the UI).
-    if (issues.structure.length) melodyWarnings.push(`measures ${start}-${end}: ${issues.structure[0]}`);
+    if (issues.structure.length) structureWarnings.push(`measures ${start}-${end}: ${issues.structure[0]}`);
     melodyWarnings.push(...issues.melody);
     rangeWarnings.push(...issues.range);
 
@@ -349,9 +359,23 @@ Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-
     stitched.push(...partMeasures(abcChunk));
   }
 
+  // Deterministic last resort on the assembled part: octave-correct anything
+  // still out of range, then re-derive the warning lists from the final ABC.
+  let abc = `${header}\n${stitchBody(stitched)}`;
+  const enforced = enforceRange(abc, p.instrName);
+  if (enforced.changed) {
+    abc = enforced.abc;
+    console.log(`[part:${p.instrName}] range auto-fix: ${enforced.changes.join("; ")}`);
+    rangeWarnings = checkPartRange(abc, p.instrName).problems;
+    melodyWarnings = p.melodyAbc && sections.length > 0
+      ? checkPartMelody(abc, p.melodyAbc, sections).problems
+      : [];
+  }
+
+  const allMelody = [...structureWarnings, ...melodyWarnings];
   return {
-    abc: `${header}\n${stitchBody(stitched)}`,
-    melodyWarnings: melodyWarnings.length ? melodyWarnings : undefined,
+    abc,
+    melodyWarnings: allMelody.length ? allMelody : undefined,
     rangeWarnings: rangeWarnings.length ? rangeWarnings : undefined,
   };
 }

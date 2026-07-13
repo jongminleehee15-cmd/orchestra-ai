@@ -302,7 +302,7 @@ CHORDS (one per measure): ${Array.isArray(chords) ? chords.join(" | ") : chords 
 
 USING THE REFERENCE:
 - In measures where YOU carry the melody, play THE EXACT MELODY shown below${transposes ? `, transposed ${interval} into your written key of ${writtenKey}` : ", transposed only as needed to sit in your instrument's range"} — keep every pitch and rhythm recognizable (light ornamentation OK), do NOT substitute a different tune.
-- In all other measures, write a MOVING, idiomatic accompaniment from the chords — do NOT sit on static held roots. Use arpeggiation, stepwise or walking motion, a rhythmic or harmonic countermelody, passing tones and suspensions — while staying register-clear of the melody (sit below it) so the tune still sings through.
+- In all other measures, write a MOVING, idiomatic accompaniment from the chords — do NOT sit on static held roots. Use arpeggiation, stepwise or walking motion, a rhythmic or harmonic countermelody, passing tones and suspensions — while staying register-clear of the melody so the tune still sings through: sit BELOW it, or ABOVE it when your instrument's range lies over the melody (flute, piccolo, violin, mallet percussion…). NEVER go outside your playable range just to get clear of the melody.
 `
     : "";
 
@@ -342,7 +342,7 @@ ${arrangingBlock}
 
 ${transposeBlock}
 ${rangeBlock}
-CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `transposed ${interval} into ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower and play the moving accompaniment described above, never a static drone.
+CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `transposed ${interval} into ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower (or higher, for instruments whose range is above the tune), remain inside your playable range, and play the moving accompaniment described above, never a static drone.
 
 ABC NOTATION RULES:
 - Start: X:1
@@ -374,7 +374,7 @@ function buildRoleInstruction(instrName, role) {
     );
   } else {
     lines.push(
-      "You do NOT carry the main melody here — stay out of the melody's register (sit lower) and leave it clear, but keep your OWN line moving and musical (a countermelody, arpeggios, walking motion), never a static repeated figure",
+      "You do NOT carry the main melody here — stay out of the melody's register (below it, or above it if your instrument lives higher than the tune) and leave it clear, but keep your OWN line moving and musical (a countermelody, arpeggios, walking motion), never a static repeated figure. Staying inside your playable range ALWAYS beats staying out of the melody's way",
     );
   }
   if (role.instruction) lines.push(`Style note: ${role.instruction}`);

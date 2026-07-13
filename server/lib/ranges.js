@@ -14,6 +14,7 @@
 
 import { baseName } from "./instrMeta.js";
 import { partMeasures } from "./partCheck.js";
+import { headerOf, stitchBody } from "./chunking.js";
 
 const R = (lo, comfortLo, comfortHi, hi) => ({ lo, comfortLo, comfortHi, hi });
 
@@ -127,6 +128,94 @@ function measurePitches(measureStr) {
     .replace(/"[^"]*"/g, "")
     .replace(/\{[^}]*\}/g, "");
   return [...s.matchAll(/[_^=]*[A-Ga-g][,']*/g)].map((m) => m[0]);
+}
+
+// Change an ABC pitch token by whole octaves: C, → C → c → c' …
+function shiftTokenOctave(tok, octaves) {
+  const m = tok.match(/^([_^=]*)([A-Ga-g])([,']*)$/);
+  if (!m) return tok;
+  const [, acc, letter, marks] = m;
+  let n = /[a-g]/.test(letter) ? 1 : 0; // octave index relative to the uppercase (C4) octave
+  for (const c of marks) n += c === "'" ? 1 : -1;
+  n += octaves;
+  const upper = letter.toUpperCase();
+  return n >= 1 ? acc + upper.toLowerCase() + "'".repeat(n - 1) : acc + upper + ",".repeat(-n);
+}
+
+// Matches either a region whose letters are NOT notes (decorations, chord
+// symbols, grace notes) or one pitch token. Fresh regex per use (stateful /g).
+const skipOrPitch = () => /(![^!]*!|"[^"]*"|\{[^}]*\})|([_^=]*[A-Ga-g][,']*)/g;
+
+// Bring one measure inside [lo, hi]. Prefers shifting the WHOLE measure by
+// octaves (preserves its contour exactly — safe even in melody measures);
+// falls back to moving individual offenders when the measure spans too wide.
+function fixMeasure(measureStr, lo, hi) {
+  const pitches = [];
+  let m;
+  const scan = skipOrPitch();
+  while ((m = scan.exec(measureStr)) !== null) {
+    if (m[2]) {
+      const v = midiOf(m[2]);
+      if (v !== null) pitches.push(v);
+    }
+  }
+  if (pitches.length === 0) return { text: measureStr, change: null };
+  const min = Math.min(...pitches);
+  const max = Math.max(...pitches);
+  if (min >= lo && max <= hi) return { text: measureStr, change: null };
+
+  let whole = 0;
+  if (min < lo && max <= hi) {
+    const k = Math.ceil((lo - min) / 12);
+    if (max + 12 * k <= hi) whole = k;
+  } else if (max > hi && min >= lo) {
+    const k = Math.ceil((max - hi) / 12);
+    if (min - 12 * k >= lo) whole = -k;
+  }
+
+  let out = "";
+  let last = 0;
+  let perNote = 0;
+  const rewrite = skipOrPitch();
+  while ((m = rewrite.exec(measureStr)) !== null) {
+    if (!m[2]) continue;
+    const v = midiOf(m[2]);
+    if (v === null) continue;
+    let oct = whole;
+    if (whole === 0) {
+      if (v < lo) { oct = Math.ceil((lo - v) / 12); perNote++; }
+      else if (v > hi) { oct = -Math.ceil((v - hi) / 12); perNote++; }
+      else continue;
+    }
+    out += measureStr.slice(last, m.index) + shiftTokenOctave(m[2], oct);
+    last = m.index + m[0].length;
+  }
+  out += measureStr.slice(last);
+  const change = whole !== 0
+    ? `shifted the whole measure ${whole > 0 ? "up" : "down"} ${Math.abs(whole)} octave${Math.abs(whole) > 1 ? "s" : ""}`
+    : `moved ${perNote} out-of-range note${perNote > 1 ? "s" : ""} to a playable octave`;
+  return { text: out, change };
+}
+
+// Deterministic last resort after prompt + retry: octave-correct anything
+// still outside the instrument's range so an unplayable part never ships.
+// Returns { abc, changed, changes[] }; the ABC is rebuilt (header + 4 bars
+// per line) only when something actually moved.
+export function enforceRange(partAbc, instrName) {
+  const info = writtenRangeInfo(instrName);
+  const header = headerOf(partAbc);
+  // No range data, or no K: header to rebuild around — leave untouched.
+  if (!info || header === String(partAbc)) return { abc: partAbc, changed: false, changes: [] };
+  const lo = info.lo.midi - 1; // same key-signature slack as checkPartRange
+  const hi = info.hi.midi + 1;
+  const changes = [];
+  const fixed = partMeasures(partAbc).map((meas, i) => {
+    const { text, change } = fixMeasure(meas, lo, hi);
+    if (change) changes.push(`measure ${i + 1}: ${change}`);
+    return text;
+  });
+  if (changes.length === 0) return { abc: partAbc, changed: false, changes: [] };
+  return { abc: `${header}\n${stitchBody(fixed)}`, changed: true, changes };
 }
 
 // Check every note of a part against the instrument's written range.

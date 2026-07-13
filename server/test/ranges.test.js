@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  SOUNDING_RANGES, WRITTEN_SHIFT, midiToName, midiToAbc, writtenRangeInfo, checkPartRange,
+  SOUNDING_RANGES, WRITTEN_SHIFT, midiToName, midiToAbc, writtenRangeInfo, checkPartRange, enforceRange,
 } from "../lib/ranges.js";
 import { INSTR_META } from "../lib/instrMeta.js";
 
@@ -70,6 +70,37 @@ test("checkPartRange tolerates a boundary semitone (key signature is not parsed)
   assert.ok(checkPartRange(part("C clef=treble", "B,8 |]"), "Flute").ok);
   // …but a clear violation (Bb3 → 58) must be.
   assert.equal(checkPartRange(part("C clef=treble", "_B,8 |]"), "Flute").ok, false);
+});
+
+test("enforceRange shifts a too-low measure up an octave, whole and intact", () => {
+  // Flute floor is C4: this measure sits around G3 → whole measure goes up 8va.
+  const res = enforceRange(part("C clef=treble", "!mf! G,2 A,2 B,2 C2 | c2 d2 e2 f2 |]"), "Flute");
+  assert.ok(res.changed);
+  assert.match(res.changes[0], /measure 1: shifted the whole measure up 1 octave/);
+  assert.match(res.abc, /!mf! G2 A2 B2 c2/, `contour and dynamics preserved: ${res.abc}`);
+  assert.match(res.abc, /c2 d2 e2 f2/, "in-range measure untouched");
+  assert.ok(checkPartRange(res.abc, "Flute").ok, "result is fully in range");
+  assert.match(res.abc, /^X:1\n/, "header preserved");
+});
+
+test("enforceRange moves single offenders when the measure spans too wide", () => {
+  // C3 is below the flute floor but the measure also holds a note near the
+  // ceiling, so the whole measure can't shift — only the low note moves.
+  const res = enforceRange(part("C clef=treble", "C,2 c''6 |]"), "Flute");
+  assert.ok(res.changed);
+  assert.match(res.changes[0], /moved 1 out-of-range note/);
+  assert.match(res.abc, /C2 c''6/, `only the low note moved: ${res.abc}`);
+});
+
+test("enforceRange pulls a stratospheric note down and leaves clean parts alone", () => {
+  const high = enforceRange(part("C clef=treble", "b'''8 |]"), "Violin");
+  assert.ok(high.changed);
+  assert.match(high.abc, /\nb8 \|\]/, `two octaves down into range (B5): ${high.abc}`);
+  assert.ok(checkPartRange(high.abc, "Violin").ok);
+  const clean = part("C clef=treble", "G,2 A,2 B,2 C2 | d8 |]");
+  const res = enforceRange(clean, "Violin");
+  assert.equal(res.changed, false);
+  assert.equal(res.abc, clean, "untouched ABC is returned byte-identical");
 });
 
 test("checkPartRange validates the transposing instrument's WRITTEN range", () => {
