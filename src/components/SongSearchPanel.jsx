@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { searchSongs, getLibrary } from "../api/client.js";
+import { searchSongs, getLibrary, importScore } from "../api/client.js";
 import { SERIF } from "../lib/constants.js";
 import SongCard from "./SongCard.jsx";
 
@@ -15,10 +15,28 @@ export default function SongSearchPanel({ onSelect, S }) {
   const [searched, setSearched] = useState(false);
   const [err, setErr] = useState(null);
   const [library, setLibrary] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [importErr, setImportErr] = useState(null);
   const inputRef = useRef(null);
+  const fileRef = useRef(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => { getLibrary().then(setLibrary).catch(() => {}); }, []);
+
+  async function handleImport(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    setImporting(true); setImportErr(null);
+    try {
+      const song = await importScore(file);
+      onSelect(song); // exact score data — go straight to the orchestra
+    } catch (err) {
+      setImportErr(err.message || "Import failed.");
+    } finally {
+      setImporting(false);
+    }
+  }
 
   async function doSearch() {
     if (!query.trim()) return;
@@ -90,6 +108,30 @@ export default function SongSearchPanel({ onSelect, S }) {
           </div>
         )}
       </div>
+
+      <div style={{ marginBottom: "20px", padding: "12px 16px", background: S.surface, border: `1px dashed ${S.border}`, borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+        <div style={{ fontSize: "13px", color: S.muted, lineHeight: 1.5 }}>
+          <span style={{ color: S.text }}>Have the sheet music?</span> Upload MusicXML (.musicxml, .xml, .mxl) or MIDI (.mid)
+          — its exact notes become the melody, guaranteed accurate. Free sources: MuseScore, Mutopia, IMSLP.
+        </div>
+        <input ref={fileRef} type="file" accept=".musicxml,.xml,.mxl,.mid,.midi" onChange={handleImport} style={{ display: "none" }} />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={importing}
+          style={{
+            padding: "8px 16px", background: "transparent", border: `1px solid ${S.goldDim}`,
+            color: S.gold, borderRadius: "4px", cursor: importing ? "wait" : "pointer",
+            fontSize: "13px", fontFamily: SERIF, whiteSpace: "nowrap",
+          }}
+        >
+          {importing ? "⏳ Converting…" : "⬆ Upload score"}
+        </button>
+      </div>
+      {importErr && (
+        <div style={{ padding: "12px", background: "rgba(200,80,80,0.1)", border: "1px solid rgba(200,80,80,0.25)", borderRadius: "5px", color: "#d47878", fontSize: "13px", marginBottom: "16px" }}>
+          Score import failed: {importErr}
+        </div>
+      )}
 
       {err && (
         <div style={{ padding: "12px", background: "rgba(200,80,80,0.1)", border: "1px solid rgba(200,80,80,0.25)", borderRadius: "5px", color: "#d47878", fontSize: "13px", marginBottom: "16px" }}>

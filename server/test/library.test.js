@@ -24,7 +24,8 @@ test("every work passes bar-math validation and has full chord coverage", () => 
 test("search is diacritic- and case-insensitive and matches aliases", () => {
   assert.equal(searchLibrary("frere jacques")[0]?.id, "frere-jacques");
   assert.equal(searchLibrary("FRÈRE")[0]?.id, "frere-jacques");
-  assert.equal(searchLibrary("beethoven")[0]?.id, "ode-to-joy");
+  assert.ok(searchLibrary("beethoven").some((w) => w.id === "ode-to-joy"));
+  assert.equal(searchLibrary("fur elise")[0]?.id, "fur-elise");
   assert.ok(searchLibrary("brother john").some((w) => w.id === "frere-jacques"));
   assert.equal(searchLibrary("zzzz nonexistent").length, 0);
 });

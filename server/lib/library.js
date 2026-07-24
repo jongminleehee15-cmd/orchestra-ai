@@ -24,7 +24,7 @@ let cache = null; // [{ id, title, composer, ...work }]
 // Parse one .abc file into a work record. Throws with a descriptive message on
 // malformed input — the loader surfaces these at startup so bad data never
 // silently enters the catalog.
-export function parseAbcWork(text, id) {
+export function parseAbcWork(text, id, { requireChords = true } = {}) {
   const headers = {};
   const meta = {};
   const bodyLines = [];
@@ -63,7 +63,7 @@ export function parseAbcWork(text, id) {
   if (!analysis.ok) {
     throw new Error(`${id}: melody failed bar-math validation — ${analysis.problems.join("; ")}`);
   }
-  if (chords.some((c) => !c)) {
+  if (requireChords && chords.some((c) => !c)) {
     const missing = chords.map((c, i) => (c ? null : i + 1)).filter(Boolean);
     throw new Error(`${id}: measures ${missing.join(", ")} have no chord annotation`);
   }

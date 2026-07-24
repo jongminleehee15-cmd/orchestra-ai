@@ -119,6 +119,22 @@ export default function ScoreView({
             )}
           </div>
 
+          {!editing && melodyPlan?.melodyAbc && (
+            ["library", "corpus", "import"].includes(melodyPlan.source) ? (
+              <p style={{ margin: "2px 2px 8px", fontSize: "12px", color: "#7fc491", lineHeight: 1.5 }}>
+                ✓ {melodyPlan.source === "library"
+                  ? "Verified melody — taken note-for-note from public-domain score data."
+                  : melodyPlan.source === "import"
+                    ? "Verified melody — taken note-for-note from your imported score file."
+                    : "Verified melody — converted note-for-note from an engraved public-domain MusicXML score."}
+              </p>
+            ) : (
+              <p style={{ margin: "2px 2px 8px", fontSize: "12px", color: "#c8a050", lineHeight: 1.5 }}>
+                ≈ AI-recalled melody — no score data was available, so this tune is reconstructed from the model's memory and may differ from the original. Use ✎ Edit melody to correct anything that sounds off.
+              </p>
+            )
+          )}
+
           {editing ? (
             <VisualMelodyEditor
               S={S}

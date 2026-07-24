@@ -37,6 +37,30 @@ export default function SongCard({ song, onSelect, S }) {
               ✓ Exact score
             </span>
           )}
+          {song.source === "import" && (
+            <span
+              title="Melody taken note-for-note from your uploaded score file — never reconstructed by AI"
+              style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a8a5a22", color: "#7fc491", border: "1px solid #4a8a5a55" }}
+            >
+              ✓ Imported score
+            </span>
+          )}
+          {song.source === "corpus" && (
+            <span
+              title="Melody converted note-for-note from an engraved public-domain MusicXML score and validated — not reconstructed by AI"
+              style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a7a9a22", color: "#7fb4d4", border: "1px solid #4a7a9a55" }}
+            >
+              ✓ MusicXML score
+            </span>
+          )}
+          {!song.source && (
+            <span
+              title="No score data was found for this song — the melody will be reconstructed by AI from memory and may differ from the original. You can correct it afterwards in the melody editor."
+              style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#a8842a22", color: "#c8a050", border: "1px solid #a8842a55" }}
+            >
+              ≈ AI-recalled melody
+            </span>
+          )}
         </div>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>

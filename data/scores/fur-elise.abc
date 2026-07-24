@@ -1,0 +1,14 @@
+X:1
+T:Für Elise
+C:Ludwig van Beethoven
+M:3/8
+L:1/8
+Q:1/4=65
+K:Am
+%%year 1810
+%%genre Classical
+%%mood Wistful and delicate
+%%description Bagatelle No. 25 in A minor, WoO 59 — the famous opening theme.
+%%aliases fur elise;bagatelle no. 25;bagatelle in a minor;woo 59;beethoven elise
+"Am" z2 e/^d/ | "E7" e/^d/e/B/=d/c/ | "Am" A z/ C/E/A/ | "E7" B z/ E/^G/B/ |
+"Am" c z/ E/e/^d/ | "E7" e/^d/e/B/=d/c/ | "Am" A z/ C/E/A/ | "E7" B z/ E/c/B/ | "Am" A z2 |]

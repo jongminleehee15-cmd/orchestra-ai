@@ -85,9 +85,12 @@ export default function App() {
         instruments: voices.map((v) => ({ name: v.name, count: 1 })),
         style, density, key, timeSignature: timeSig, bpm, measures,
         libraryId: selectedSong?.libraryId, // library works: melody used verbatim server-side
+        corpusId: selectedSong?.corpusId, // engraved MusicXML scores: same verbatim contract, fetched at search time
       });
-      // Library works may clamp to the work's real length — keep the UI in sync
-      // so parts are requested with the same measure count as the plan.
+      // Safety net: the plan's measure count should always match what was
+      // requested (library works now extend past the theme's literal length
+      // rather than truncating to it), but keep the UI in sync with whatever
+      // the server actually returned so parts are requested consistently.
       if (plan?.measures && plan.measures !== measures) setMeasures(plan.measures);
       setMelodyPlan(plan);
       setPlanStatus("done");

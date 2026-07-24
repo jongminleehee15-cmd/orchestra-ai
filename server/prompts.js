@@ -242,6 +242,71 @@ Rules:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 2c. LIBRARY MELODY EXTENSION
+//     Library works carry only the tune's literal statement (often 8-16
+//     measures). When the user requests a longer arrangement, the app must
+//     reach that length through legitimate arrangement technique — repetition
+//     with variation, development, modulation, intro/outro material — rather
+//     than truncating the request down to the source melody's length. The
+//     literal theme (measures 1..themeMeasures.length) is never altered; this
+//     prompt only asks for the ADDITIONAL measures that follow it.
+// ─────────────────────────────────────────────────────────────────────────────
+export function buildLibraryExtensionPrompt({
+  songTitle, songArtist, key, timeSignature, bpm, style, density,
+  themeMelodyAbc, themeChords, extraMeasures, isFinalSection,
+}) {
+  const themeList = splitMelodyIntoMeasures(themeMelodyAbc)
+    .map((m, i) => `  measure ${i + 1}: ${m}   [${themeChords[i] || ""}]`)
+    .join("\n");
+
+  return `You are a professional arranger. Below is the EXACT, real theme of "${songTitle}"${songArtist ? ` by ${songArtist}` : ""} — verified public-domain melody data, not to be altered.
+
+KEY: ${key} | TIME: ${timeSignature} | TEMPO: ${bpm} BPM | STYLE: ${style} | DENSITY: ${density}
+
+THE THEME (concert pitch, L:1/8), exact notes and chords:
+${themeList}
+
+The user asked for a longer arrangement than the theme's literal length. Your job: compose exactly ${extraMeasures} ADDITIONAL measures that continue directly after the theme above, using legitimate arrangement technique — NOT a verbatim copy-paste repeat. Use real developmental variation: melodic sequence, rhythmic diminution/augmentation, a countermelody-led restatement, a key change (e.g. to the relative or dominant) with a return, a written-out ornamented repeat, or new but idiomatic transition/interlude material that still clearly belongs to the same piece. The result must still sound like an arrangement of THIS song, not a different tune.
+${isFinalSection ? "This is the LAST section — end with a clear, satisfying cadence in the home key." : "This is not the final section — end on a chord/note that can lead onward, not necessarily a final cadence."}
+
+Return ONLY a JSON object:
+{
+  "melodyAbc": "the ${extraMeasures} ADDITIONAL measures only (do not repeat the theme measures above) as ABC note text, ONE single line, NO line breaks, NO headers, concert pitch, L:1/8 lengths, exactly ${extraMeasures} measures separated by | and ending with |]",
+  "chords": ["${extraMeasures} chord symbols, one per measure"]
+}
+
+Rules:
+- Each measure MUST sum to a full ${timeSignature} bar in L:1/8 units (eighth=1, quarter=2, dotted-quarter=3, half=4, dotted-half=6, whole=8)
+- chords array length MUST equal ${extraMeasures}
+- melodyAbc MUST be a single line with NO raw line breaks (so the JSON stays valid) and NO barline before the first measure
+- Return ONLY the JSON, no markdown, no explanation`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2d. HARMONIZATION (external works only)
+//     Tunes from public archives arrive as melody-only ABC. The melody is
+//     verified data and stays untouched; this call ONLY assigns one chord per
+//     measure so the arrangement pipeline (which assumes per-bar chords) works.
+// ─────────────────────────────────────────────────────────────────────────────
+export function buildHarmonizePrompt({ songTitle, key, timeSignature, melodyAbc, measures }) {
+  const list = splitMelodyIntoMeasures(melodyAbc)
+    .map((m, i) => `  measure ${i + 1}: ${m}`)
+    .join("\n");
+
+  return `You are a harmony expert. Below is the EXACT melody of "${songTitle}" (key ${key}, ${timeSignature}, L:1/8) — ${measures} measures of verified score data. The notes are final; do NOT alter or comment on them.
+
+${list}
+
+Assign ONE chord symbol per measure that harmonizes this melody idiomatically in ${key} — functional, natural progressions that fit the melody notes of each bar. If the harmony truly moves mid-bar you may write two symbols separated by a space (e.g. "G D"), but prefer one per bar.
+
+Return ONLY a JSON object: { "chords": ["${measures} chord symbols, one per measure"] }
+Rules:
+- chords array length MUST equal ${measures}
+- Plain symbols only: C, G7, Am, Dm7, F#m, Bb…
+- Return ONLY the JSON, no markdown, no explanation`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 3. PER-INSTRUMENT PART
 //    Receives the canonical melody + chords. For measures this part carries the
 //    melody, we inject the EXACT per-measure notes so it reproduces the tune

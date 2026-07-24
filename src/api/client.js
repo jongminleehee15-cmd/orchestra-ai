@@ -34,6 +34,19 @@ export async function getLibrary() {
   return data?.songs || [];
 }
 
+// Upload a MusicXML/MIDI score file; the server converts it once into its
+// canonical verified melody form. → song object (source: "import")
+export async function importScore(file) {
+  const resp = await fetch(`/api/import?filename=${encodeURIComponent(file.name)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream" },
+    body: file,
+  });
+  const data = await resp.json().catch(() => null);
+  if (!resp.ok) throw new Error(data?.error || `Import failed (${resp.status})`);
+  return data.song;
+}
+
 // → blueprint plan { melodyAbc, chords, sections, instrumentRoles, melodySummary }
 export async function generateBlueprint(params) {
   const { plan } = await postJson("/api/blueprint", params);

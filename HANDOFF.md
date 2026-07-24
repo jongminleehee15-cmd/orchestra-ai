@@ -6,7 +6,7 @@
 > priority is **melody accuracy across all generated parts** — keep that the
 > north star.
 
-Last worked: 2026-07-01. Repo is local-only (git initialized, not pushed).
+Last worked: 2026-07-23. Repo is local-only (git initialized, not pushed).
 
 ---
 
@@ -440,3 +440,33 @@ data with per-measure chords. For these works:
 Non-library songs keep the web-ground-truth + refine pipeline (§ commit
 5cedd5e). Next steps: grow the catalog, anacrusis support, MusicXML/kern
 ingestion behind the same interface.
+
+## 11. Symbolic source hierarchy (2026-07-23)
+
+The user rejected hand-expanding the curated library; the architecture is now
+a **hierarchy of note-level sources, best available wins**, every source gated
+through the same `analyzeMelody` bar-math validation, melody always VERBATIM:
+
+1. **Curated library** (`data/scores/*.abc`, now 8 works — Für Elise added,
+   3/8 + anacrusis-as-rest-pad proved out).
+2. **User imports** (`data/imported/*.abc`) — POST `/api/import` accepts
+   MusicXML (`.musicxml`/`.xml`/`.mxl`) and MIDI uploads, converts ONCE into
+   canonical ABC (`server/lib/symbolic.js` + `musicxml.js` + `midi.js` +
+   `imports.js`), persists it, and writes harmonized chords back after the
+   first blueprint ("solved once"). Upload UI on the search tab.
+3. **Runtime MusicXML corpus** (`server/lib/corpus.js`) — searches the
+   music21 corpus on GitHub (~650 engraved PD scores: Bach chorales,
+   Beethoven/Mozart/Haydn chamber, Monteverdi…), fetches + converts + validates
+   before a result card is ever shown. Blueprint via `corpusId`.
+4. **LLM recall** — unchanged pipeline, but now honestly labeled: amber
+   "≈ AI-recalled melody" badge on cards and a warning under the canonical
+   melody in ScoreView. Green/blue "✓" badges for the three verified sources.
+
+**Removed at user direction:** The Session (Irish-trad archive) integration —
+do NOT re-add it. Engraved parts carry no chord symbols, so corpus/import works
+are harmonized by one LLM call (`buildHarmonizePrompt`, melody untouched,
+tonic-triad fallback). Blueprint plumbing shared via `planFromWork()`.
+`npm test` = 50 tests incl. MusicXML/MIDI converter fixtures and a real-file
+smoke (Bach BWV 66.6 verified live end-to-end: melody byte-identical).
+Known gap: no legal fetch API covers most famous repertoire (MuseScore
+paywalled, IMSLP = PDFs) — for those, upload or curated transcription.

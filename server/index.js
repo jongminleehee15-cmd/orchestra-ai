@@ -6,13 +6,17 @@ import { PORT, MODEL, ANTHROPIC_API_KEY, tokensForMeasures } from "./config.js";
 import { callAnthropic, extractJson } from "./anthropic.js";
 import {
   buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt, buildMelodyCheckPrompt,
-  buildGroundTruthPrompt, buildLibraryBlueprintPrompt,
+  buildGroundTruthPrompt, buildLibraryBlueprintPrompt, buildLibraryExtensionPrompt,
+  buildHarmonizePrompt,
 } from "./prompts.js";
 import { analyzeMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
+import { searchCorpus, getCorpusWork } from "./lib/corpus.js";
+import { tonicChord } from "./lib/symbolic.js";
+import { loadImports, getImportedWork, searchImports, ingestScore, saveImportChords, importToSong } from "./lib/imports.js";
 import { checkPartMelody, partMeasures } from "./lib/partCheck.js";
 import { checkPartRange, enforceRange } from "./lib/ranges.js";
-import { CHUNK_THRESHOLD, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount } from "./lib/chunking.js";
+import { CHUNK_THRESHOLD, CHUNK_SIZE, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount } from "./lib/chunking.js";
 
 const app = express();
 
@@ -46,8 +50,22 @@ app.get("/api/health", (req, res) => {
 // ── Public-domain score library ──────────────────────────────────────────────
 // Real symbolic melody data — the accuracy-first path. See server/lib/library.js.
 app.get("/api/library", (req, res) => {
-  res.json({ songs: loadLibrary().map(workToSong) });
+  res.json({ songs: [...loadLibrary().map(workToSong), ...loadImports().map(importToSong)] });
 });
+
+// ── Score import (MusicXML / MIDI upload) ────────────────────────────────────
+// Convert an uploaded score into the canonical verified representation. The
+// file is parsed, validated with the same bar-math gate as the library, and
+// persisted — from then on every arrangement of this song starts from it.
+app.post("/api/import", express.raw({ type: () => true, limit: "10mb" }), handler(async (req, res) => {
+  const filename = String(req.query.filename || "");
+  if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+    throw Object.assign(new Error("empty upload"), { status: 400 });
+  }
+  const work = ingestScore(filename, req.body);
+  console.log(`[import] "${work.title}" ← ${filename} (${work.measures} bars, ${work.key} ${work.timeSignature})`);
+  res.json({ song: importToSong(work) });
+}));
 
 // ── Song search ──────────────────────────────────────────────────────────────
 // Library matches (exact score data) come back instantly and skip the LLM
@@ -56,10 +74,26 @@ app.post("/api/search", handler(async (req, res) => {
   const query = String(req.body?.query || "").trim();
   if (!query) throw Object.assign(new Error("query is required"), { status: 400 });
 
-  const libraryHits = searchLibrary(query).map(workToSong);
+  const libraryHits = [
+    ...searchLibrary(query).map(workToSong),
+    ...searchImports(query).map(importToSong),
+  ];
   if (libraryHits.length > 0) {
     res.json({ songs: libraryHits });
     return;
+  }
+
+  // Engraved MusicXML corpus next — real note-level score data, converted and
+  // validated before it is ever shown. Network failure degrades to the LLM.
+  try {
+    const corpusHits = await searchCorpus(query);
+    if (corpusHits.length > 0) {
+      console.log(`[search] "${query}": ${corpusHits.length} validated MusicXML hit(s) from the corpus`);
+      res.json({ songs: corpusHits });
+      return;
+    }
+  } catch (err) {
+    console.warn(`[search] corpus lookup failed: ${err.message}`);
   }
 
   const text = await callAnthropic({
@@ -82,36 +116,38 @@ app.post("/api/blueprint", handler(async (req, res) => {
   const measures = Number(p.measures) || 8;
 
   // Library path: the melody is REAL symbolic data — use it verbatim. The LLM
-  // only plans orchestration; no melody generation, no refine pass, no web
-  // lookup. This is the accuracy-first pipeline for public-domain works.
+  // never touches the theme's own notes; no refine pass, no web lookup. But the
+  // requested length is not truncated down to the theme's literal length either —
+  // when the user asks for more, extendLibraryMelody composes additional
+  // measures (real development, not a copy-paste loop) to reach it.
   if (p.libraryId) {
-    const work = getWork(p.libraryId);
+    const work = getWork(p.libraryId) || getImportedWork(p.libraryId);
     if (!work) throw Object.assign(new Error(`unknown library work: ${p.libraryId}`), { status: 404 });
-
-    // Use the requested length if the work is long enough, else the full work.
-    const useMeasures = Math.min(measures, work.measures);
-    const melodyMeasures = work.melodyMeasures.slice(0, useMeasures);
-    const melodyAbc = `${melodyMeasures.join(" | ")} |]`;
-    const chords = work.chords.slice(0, useMeasures);
-
-    const text = await callAnthropic({
-      prompt: buildLibraryBlueprintPrompt({
-        songTitle: work.title, songArtist: work.composer, songGenre: work.genre,
-        instruments: p.instruments, style: p.style, density: p.density,
-        key: work.key, timeSignature: work.timeSignature, bpm: p.bpm || work.bpm,
-        measures: useMeasures, melodyAbc, chords,
-      }),
-      maxTokens: 2500,
-    });
-    const plan = extractJson(text) || {};
-    // The melody is never the model's to change — overwrite unconditionally.
-    plan.melodyAbc = melodyAbc;
-    plan.chords = chords;
-    plan.source = "library";
+    // Imported works may arrive without chords — harmonize ONCE (the melody
+    // stays untouched) and persist, so the song is never solved twice.
+    if (!work.chords) {
+      work.chords = await harmonizeWork(work);
+      if (work.sourceType === "import") saveImportChords(work.id, work.chords);
+    }
+    const plan = await planFromWork(work, measures, p);
+    plan.source = work.sourceType || "library";
     plan.libraryId = work.id;
-    plan.key = work.key;
-    plan.timeSignature = work.timeSignature;
-    plan.measures = useMeasures;
+    res.json({ plan });
+    return;
+  }
+
+  // Corpus path: same verbatim-melody contract as the library — the MusicXML
+  // was fetched, converted, and validated at search time; here we (re)use the
+  // cached work, harmonize it once (engraved parts carry no chord symbols),
+  // and run the identical orchestration-only pipeline.
+  if (p.corpusId) {
+    const work = await getCorpusWork(p.corpusId);
+    if (!work) throw Object.assign(new Error(`unknown or unusable corpus score: ${p.corpusId}`), { status: 404 });
+    if (!work.chords) work.chords = await harmonizeWork(work);
+    const plan = await planFromWork(work, measures, p);
+    plan.source = "corpus";
+    plan.corpusId = work.corpusId;
+    plan.sourceUrl = work.sourceUrl;
     res.json({ plan });
     return;
   }
@@ -135,6 +171,125 @@ app.post("/api/blueprint", handler(async (req, res) => {
   if (plan && groundTruth) plan.groundTruth = groundTruth; // surface sources/confidence to the UI
   res.json({ plan });
 }));
+
+// Shared verbatim-melody blueprint: extend the work's real melody to the
+// requested length, then ask the model ONLY for the orchestration plan. The
+// melody/chords in the returned plan are overwritten with the real data
+// unconditionally — they are never the model's to change.
+async function planFromWork(work, measures, p) {
+  const { melodyMeasures, chords } = await extendLibraryMelody(work, measures, p);
+  const useMeasures = melodyMeasures.length;
+  const melodyAbc = `${melodyMeasures.join(" | ")} |]`;
+
+  const text = await callAnthropic({
+    prompt: buildLibraryBlueprintPrompt({
+      songTitle: work.title, songArtist: work.composer, songGenre: work.genre,
+      instruments: p.instruments, style: p.style, density: p.density,
+      key: work.key, timeSignature: work.timeSignature, bpm: p.bpm || work.bpm,
+      measures: useMeasures, melodyAbc, chords,
+    }),
+    maxTokens: Math.min(8000, 2500 + useMeasures * 30),
+  });
+  const plan = extractJson(text) || {};
+  plan.melodyAbc = melodyAbc;
+  plan.chords = chords;
+  plan.key = work.key;
+  plan.timeSignature = work.timeSignature;
+  plan.measures = useMeasures;
+  return plan;
+}
+
+// Assign one chord per measure to a chord-less external melody. The melody is
+// fixed; only the harmonization is the model's. Falls back to the tonic triad
+// throughout on any failure so the pipeline never stalls on this step.
+async function harmonizeWork(work) {
+  try {
+    const text = await callAnthropic({
+      prompt: buildHarmonizePrompt({
+        songTitle: work.title, key: work.key, timeSignature: work.timeSignature,
+        melodyAbc: work.melodyAbc, measures: work.measures,
+      }),
+      maxTokens: Math.min(4000, 500 + work.measures * 12),
+    });
+    const parsed = extractJson(text);
+    if (
+      Array.isArray(parsed?.chords) && parsed.chords.length === work.measures &&
+      parsed.chords.every((c) => typeof c === "string" && c.trim())
+    ) {
+      return parsed.chords.map((c) => c.trim());
+    }
+    console.warn(`[harmonize] "${work.title}": bad chord array from model — using tonic fallback`);
+  } catch (err) {
+    console.warn(`[harmonize] "${work.title}" failed: ${err.message} — using tonic fallback`);
+  }
+  return work.melodyMeasures.map(() => tonicChord(work.key));
+}
+
+// Reach a library work's requested length without shrinking the request to fit
+// the theme. If the theme is already long enough, truncate to it (unchanged
+// behavior). Otherwise compose additional measures past the theme — real
+// development (variation, sequence, modulation), not a verbatim loop — in
+// chunks of CHUNK_SIZE so each call stays inside the model's reliable window.
+// A failed/invalid chunk falls back to literal repeats of the theme so the
+// result is always exactly `targetMeasures` of musically valid material.
+async function extendLibraryMelody(work, targetMeasures, p) {
+  if (targetMeasures <= work.measures) {
+    return {
+      melodyMeasures: work.melodyMeasures.slice(0, targetMeasures),
+      chords: work.chords.slice(0, targetMeasures),
+    };
+  }
+
+  const melodyMeasures = [...work.melodyMeasures];
+  const chords = [...work.chords];
+  const timeSignature = work.timeSignature;
+
+  while (melodyMeasures.length < targetMeasures) {
+    const remaining = targetMeasures - melodyMeasures.length;
+    const n = Math.min(remaining, CHUNK_SIZE);
+    const isFinalSection = melodyMeasures.length + n >= targetMeasures;
+
+    let best = null;
+    let bestScore = Infinity;
+    for (let attempt = 0; attempt < 2 && bestScore > 0; attempt++) {
+      let text;
+      try {
+        text = await callAnthropic({
+          prompt: buildLibraryExtensionPrompt({
+            songTitle: work.title, songArtist: work.composer,
+            key: work.key, timeSignature, bpm: p.bpm || work.bpm,
+            style: p.style, density: p.density,
+            themeMelodyAbc: `${melodyMeasures.join(" | ")} |]`,
+            themeChords: chords,
+            extraMeasures: n,
+            isFinalSection,
+          }),
+          maxTokens: tokensForMeasures(n),
+        });
+      } catch {
+        break; // network/model error — fall through to the repeat fallback below
+      }
+      const parsed = extractJson(text);
+      if (!parsed || typeof parsed.melodyAbc !== "string" || !Array.isArray(parsed.chords)) continue;
+      const score = analyzeMelody(parsed.melodyAbc, timeSignature, n).problems.length;
+      if (score < bestScore) { best = parsed; bestScore = score; }
+    }
+
+    const extMeasures = best ? splitMelodyIntoMeasures(best.melodyAbc).slice(0, n) : [];
+    const extChords = best ? best.chords.slice(0, n) : [];
+    // Repair/pad: guarantee exactly n valid measures by cycling the theme's own
+    // (already bar-math-valid) measures for anything the model didn't provide.
+    while (extMeasures.length < n) {
+      const i = extMeasures.length % work.measures;
+      extMeasures.push(work.melodyMeasures[i]);
+      extChords.push(work.chords[i]);
+    }
+    melodyMeasures.push(...extMeasures);
+    chords.push(...extChords);
+  }
+
+  return { melodyMeasures, chords };
+}
 
 // Fetch documented song data (key, per-section chords, structure, melody facts)
 // via web search. Returns null when nothing reliable was found or the call fails —
