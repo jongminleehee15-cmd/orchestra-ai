@@ -20,7 +20,7 @@ export default function OrchestraBuilder({
   const removeInstr = (name) => setSelectedInstrs((prev) => prev.filter((i) => i.name !== name));
   const setCount = (name, v) =>
     setSelectedInstrs((prev) => prev.map((i) => (i.name === name ? { ...i, count: Math.max(1, Math.min(16, parseInt(v) || 1)) } : i)));
-  const totalPlayers = () => selectedInstrs.reduce((s, i) => s + i.count, 0);
+  const totalParts = () => selectedInstrs.reduce((s, i) => s + i.count, 0);
 
   const filteredInstrs = instrSearch
     ? ALL_INSTRUMENTS.filter((i) => i.toLowerCase().includes(instrSearch.toLowerCase()))
@@ -107,28 +107,38 @@ export default function OrchestraBuilder({
 
         <div>
           <SecH>
-            Your Orchestra {totalPlayers() > 0 && <span style={{ color: S.gold, fontSize: "13px" }}>({totalPlayers()} players)</span>}
+            Your Orchestra {totalParts() > 0 && <span style={{ color: S.gold, fontSize: "13px" }}>({totalParts()} distinct parts)</span>}
           </SecH>
           {selectedInstrs.length === 0 ? (
             <div style={{ padding: "36px 16px", textAlign: "center", border: `1px dashed ${S.border}`, borderRadius: "5px", color: S.muted, fontSize: "13px" }}>
               Select a preset or add instruments
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "5px", maxHeight: "280px", overflowY: "auto" }}>
-              {selectedInstrs.map(({ name, count }) => {
-                const grp = Object.entries(INSTRUMENT_GROUPS).find(([, v]) => v.includes(name))?.[0];
-                return (
-                  <div key={name} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", background: S.surface2, borderRadius: "3px", border: `1px solid ${S.border}` }}>
-                    <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: groupColor(grp), flexShrink: 0 }} />
-                    <span style={{ flex: 1, fontSize: "13px", color: S.text }}>{name}</span>
-                    <input type="number" min={1} max={16} value={count} onChange={(e) => setCount(name, e.target.value)} style={{ ...inputStyle, width: "46px", padding: "3px 6px", textAlign: "center", fontSize: "12px" }} />
-                    <button onClick={() => removeInstr(name)} style={{ background: "none", border: "none", color: S.muted, cursor: "pointer", fontSize: "15px", padding: "0 3px" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "#d07070")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = S.muted)}>✕</button>
-                  </div>
-                );
-              })}
-            </div>
+            <>
+              <div style={{ fontSize: "11px", color: S.muted, marginBottom: "6px", lineHeight: 1.4 }}>
+                Enter how many <em>distinct</em> written lines each instrument needs — not how many players you have.
+                8 violinists reading the same 2 lines is still 2 (players double up on a part; they don't each get their own).
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "5px", maxHeight: "280px", overflowY: "auto" }}>
+                {selectedInstrs.map(({ name, count }) => {
+                  const grp = Object.entries(INSTRUMENT_GROUPS).find(([, v]) => v.includes(name))?.[0];
+                  return (
+                    <div key={name} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", background: S.surface2, borderRadius: "3px", border: `1px solid ${S.border}` }}>
+                      <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: groupColor(grp), flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: "13px", color: S.text }}>{name}</span>
+                      <input
+                        type="number" min={1} max={16} value={count} onChange={(e) => setCount(name, e.target.value)}
+                        title="Number of distinct parts to write for this instrument (not player headcount)"
+                        style={{ ...inputStyle, width: "46px", padding: "3px 6px", textAlign: "center", fontSize: "12px" }}
+                      />
+                      <button onClick={() => removeInstr(name)} style={{ background: "none", border: "none", color: S.muted, cursor: "pointer", fontSize: "15px", padding: "0 3px" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = "#d07070")}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = S.muted)}>✕</button>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>

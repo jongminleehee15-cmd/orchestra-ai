@@ -111,8 +111,10 @@ export default function SongSearchPanel({ onSelect, S }) {
 
       <div style={{ marginBottom: "20px", padding: "12px 16px", background: S.surface, border: `1px dashed ${S.border}`, borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
         <div style={{ fontSize: "13px", color: S.muted, lineHeight: 1.5 }}>
-          <span style={{ color: S.text }}>Have the sheet music?</span> Upload MusicXML (.musicxml, .xml, .mxl) or MIDI (.mid)
-          — its exact notes become the melody, guaranteed accurate. Free sources: MuseScore, Mutopia, IMSLP.
+          <span style={{ color: S.text }}>Have the sheet music?</span> Upload MusicXML (.musicxml, .xml, .mxl) for a
+          guaranteed-exact melody — MuseScore.com scores can be downloaded in this format. MIDI (.mid) also works
+          (e.g. from Mutopia Project) but its melody is guessed by highest-note extraction, which is reliable for
+          simple, clearly voice-led tunes and less so for dense piano/guitar textures — worth a spot-check afterward.
         </div>
         <input ref={fileRef} type="file" accept=".musicxml,.xml,.mxl,.mid,.midi" onChange={handleImport} style={{ display: "none" }} />
         <button

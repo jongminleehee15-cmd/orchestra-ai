@@ -37,9 +37,16 @@ export default function SongCard({ song, onSelect, S }) {
               ✓ Exact score
             </span>
           )}
-          {song.source === "import" && (
+          {song.source === "import" && song.format === "midi" ? (
             <span
-              title="Melody taken note-for-note from your uploaded score file — never reconstructed by AI"
+              title="Melody guessed from your uploaded MIDI by highest-note extraction — reliable for simple, clearly voice-led tunes, but can mistake accompaniment or arpeggios for the melody in denser pieces. Spot-check it in the melody editor before trusting."
+              style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#a8842a22", color: "#c8a050", border: "1px solid #a8842a55" }}
+            >
+              ♪ MIDI-derived — verify
+            </span>
+          ) : song.source === "import" && (
+            <span
+              title="Melody taken note-for-note from your uploaded MusicXML score — never reconstructed by AI"
               style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a8a5a22", color: "#7fc491", border: "1px solid #4a8a5a55" }}
             >
               ✓ Imported score

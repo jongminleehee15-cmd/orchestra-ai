@@ -12,6 +12,7 @@ import {
 import { analyzeMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
 import { searchCorpus, getCorpusWork } from "./lib/corpus.js";
+import { searchOpenScore, getOpenScoreWork } from "./lib/openscore.js";
 import { tonicChord } from "./lib/symbolic.js";
 import { loadImports, getImportedWork, searchImports, ingestScore, saveImportChords, importToSong } from "./lib/imports.js";
 import { checkPartMelody, partMeasures } from "./lib/partCheck.js";
@@ -83,17 +84,27 @@ app.post("/api/search", handler(async (req, res) => {
     return;
   }
 
-  // Engraved MusicXML corpus next — real note-level score data, converted and
+  // Engraved MusicXML corpora next — real note-level score data, converted and
   // validated before it is ever shown. Network failure degrades to the LLM.
   try {
     const corpusHits = await searchCorpus(query);
     if (corpusHits.length > 0) {
-      console.log(`[search] "${query}": ${corpusHits.length} validated MusicXML hit(s) from the corpus`);
+      console.log(`[search] "${query}": ${corpusHits.length} validated MusicXML hit(s) from the music21 corpus`);
       res.json({ songs: corpusHits });
       return;
     }
   } catch (err) {
-    console.warn(`[search] corpus lookup failed: ${err.message}`);
+    console.warn(`[search] music21 corpus lookup failed: ${err.message}`);
+  }
+  try {
+    const openScoreHits = await searchOpenScore(query);
+    if (openScoreHits.length > 0) {
+      console.log(`[search] "${query}": ${openScoreHits.length} validated MusicXML hit(s) from OpenScore Lieder`);
+      res.json({ songs: openScoreHits });
+      return;
+    }
+  } catch (err) {
+    console.warn(`[search] OpenScore lookup failed: ${err.message}`);
   }
 
   const text = await callAnthropic({
@@ -139,9 +150,11 @@ app.post("/api/blueprint", handler(async (req, res) => {
   // Corpus path: same verbatim-melody contract as the library — the MusicXML
   // was fetched, converted, and validated at search time; here we (re)use the
   // cached work, harmonize it once (engraved parts carry no chord symbols),
-  // and run the identical orchestration-only pipeline.
+  // and run the identical orchestration-only pipeline. Path prefixes from the
+  // two corpora never collide (music21/corpus/... vs scores/...), so trying
+  // both is unambiguous.
   if (p.corpusId) {
-    const work = await getCorpusWork(p.corpusId);
+    const work = (await getCorpusWork(p.corpusId)) || (await getOpenScoreWork(p.corpusId));
     if (!work) throw Object.assign(new Error(`unknown or unusable corpus score: ${p.corpusId}`), { status: 404 });
     if (!work.chords) work.chords = await harmonizeWork(work);
     const plan = await planFromWork(work, measures, p);

@@ -85,6 +85,7 @@ export function parseAbcWork(text, id, { requireChords = true } = {}) {
     genre: meta.genre || "Traditional",
     mood: meta.mood || "",
     description: meta.description || "",
+    format: meta.format || "",
     aliases: (meta.aliases || "").split(";").map((s) => s.trim()).filter(Boolean),
   };
 }

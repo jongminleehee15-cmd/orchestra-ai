@@ -26,7 +26,10 @@ test("lenSuffix maps eighth-unit durations to ABC lengths", () => {
   assert.equal(lenSuffix(0.5), "/");
   assert.equal(lenSuffix(1.5), "3/2");
   assert.equal(lenSuffix(0.25), "1/4");
-  assert.equal(lenSuffix(2 / 3), null); // triplet — unrepresentable
+  // Triplets are unrepresentable as a fractional note length — abcjs's parser
+  // rejects "2/3"-style durations outright, so this must stay null (the
+  // caller's grid-snap + bar-math rejection is the correct, safe behavior).
+  assert.equal(lenSuffix(2 / 3), null);
 });
 
 test("spellMidi prefers sharps in sharp keys and flats in flat keys", () => {
@@ -115,6 +118,82 @@ test("parseMusicXml extracts melody with chord-top, ties, and key spelling", () 
 test("unzipMxl extracts and inflates the score entry", () => {
   const w = parseMusicXml(unzipMxl(makeMxl(XML)));
   assert.equal(w.title, "Test Tune");
+});
+
+// A voice+piano score where the Voice part fails validation (bad duration
+// math) must NOT silently fall back to the Piano part — that would ship the
+// accompaniment as "the melody" with the same confidence as a correct
+// extraction. Regression for a real bug found in an OpenScore Lieder file
+// (Fauré's "Après un rêve": a failing tied vocal line fell through to the
+// piano's repeated broken-chord figure, which validated fine but was wrong).
+const VOICE_PIANO_XML = `<?xml version="1.0"?>
+<score-partwise version="3.1">
+  <work><work-title>Broken Vocal Line</work-title></work>
+  <part-list>
+    <score-part id="P1"><part-name>Voice</part-name></score-part>
+    <score-part id="P2"><part-name>Piano</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>2</divisions>
+        <key><fifths>0</fifths><mode>major</mode></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+      </attributes>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice></note>
+    </measure>
+    <!-- overfilled bar (10 units where 8 is expected) — not a pickup, a genuine error -->
+    <measure number="2"><note><pitch><step>D</step><octave>5</octave></pitch><duration>10</duration><voice>1</voice></note></measure>
+    <measure number="3"><note><pitch><step>E</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice></note></measure>
+    <measure number="4"><note><pitch><step>F</step><octave>5</octave></pitch><duration>8</duration><voice>1</voice></note></measure>
+  </part>
+  <part id="P2">
+    <measure number="1">
+      <attributes>
+        <divisions>2</divisions>
+        <key><fifths>0</fifths><mode>major</mode></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+      </attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice></note>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice></note>
+    </measure>
+    <measure number="2"><note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice></note></measure>
+    <measure number="3"><note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice></note></measure>
+    <measure number="4"><note><pitch><step>C</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice></note></measure>
+  </part>
+</score-partwise>`;
+
+test("parseMusicXml fails closed instead of falling back from a broken Voice part to Piano", () => {
+  assert.throws(() => parseMusicXml(VOICE_PIANO_XML), /validation/);
+});
+
+test("parseMusicXml still falls back among parts when none are tagged as accompaniment", () => {
+  // Two non-accompaniment-named parts, the first genuinely empty — the
+  // original "may lead with an empty/percussion part" fallback must still work.
+  const xml = `<?xml version="1.0"?>
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1"><part-name>Flute</part-name></score-part>
+    <score-part id="P2"><part-name>Cello</part-name></score-part>
+  </part-list>
+  <part id="P1"><measure number="1"></measure></part>
+  <part id="P2">
+    <measure number="1">
+      <attributes>
+        <divisions>2</divisions>
+        <key><fifths>0</fifths><mode>major</mode></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+      </attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice></note>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice></note>
+    </measure>
+    <measure number="2"><note><pitch><step>D</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice></note></measure>
+    <measure number="3"><note><pitch><step>E</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice></note></measure>
+    <measure number="4"><note><pitch><step>F</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice></note></measure>
+  </part>
+</score-partwise>`;
+  const w = parseMusicXml(xml);
+  assert.equal(w.melodyMeasures[0], "C4C4");
 });
 
 // Build a minimal one-entry zip (deflate) around the XML, as MuseScore does.

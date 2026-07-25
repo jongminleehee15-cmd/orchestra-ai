@@ -69,10 +69,23 @@ export function parseMusicXml(input) {
   const parts = arr(score.part);
   if (parts.length === 0) throw new Error("MusicXML file contains no parts");
 
-  // The melody is almost always in the first part, but a file may lead with
-  // an empty/percussion part — try each until one converts and validates.
+  // In a multi-part score (voice + piano, solo + orchestra), if the intended
+  // melody part (voice, solo instrument) fails to extract/validate, the melody
+  // is NOT known to be reproducible — falling back to an accompaniment part
+  // would silently ship the wrong content with the same "verified" confidence
+  // as a correct one. So: only fall back among parts that are NOT tagged as
+  // pure accompaniment, unless every part in the file is (a genuine solo piano/
+  // organ work, where that IS the only melody source there is).
+  const nameById = {};
+  for (const sp of arr(score["part-list"]?.["score-part"])) {
+    nameById[sp["@_id"]] = String(txt(sp["part-name"]) || "").toLowerCase();
+  }
+  const isAccompaniment = (part) => /\b(piano|orchestra|organ|accompaniment|continuo)\b/.test(nameById[part["@_id"]] || "");
+  const candidates = parts.filter((p) => !isAccompaniment(p));
+  const tryOrder = candidates.length > 0 ? candidates : parts;
+
   let lastErr = null;
-  for (const part of parts) {
+  for (const part of tryOrder) {
     try {
       return extractPart(part, { title, composer });
     } catch (err) {

@@ -59,6 +59,16 @@ export function abcPitch(step, octave) {
 
 // ABC length suffix for a duration in L:1/8 units. null = unrepresentable
 // (true tuplet values — the caller decides whether to round or reject).
+//
+// Tried representing exact thirds/sixths as literal "2/3"-style fractions
+// (a genuine MusicXML triplet duration) — abcjs's own parser rejects that
+// syntax outright ("Duration not representable"), so a bar that passed our
+// bar-math validator would still fail to render/play in the app. Real ABC
+// tuplets need "(3"-prefixed note groups at NORMAL length, not fractional
+// note lengths — a bigger, separate feature (would also need to read each
+// note's MusicXML <time-modification>, which the parser currently discards).
+// Not attempted here; grid-snapping (with its bar-math rejection as the
+// safety net) stays the correct, safe behavior until that's built.
 export function lenSuffix(u) {
   const near = (x) => Math.abs(x - Math.round(x)) < 1e-6;
   if (near(u)) { const n = Math.round(u); return n === 1 ? "" : String(n); }

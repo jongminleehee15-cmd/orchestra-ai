@@ -74,17 +74,25 @@ export function ingestScore(filename, buffer) {
     );
   }
 
+  const isMidi = ext === "mid" || ext === "midi";
   let parsed;
-  if (ext === "mid" || ext === "midi") parsed = parseMidi(buffer);
+  if (isMidi) parsed = parseMidi(buffer);
   else if (ext === "mxl") parsed = parseMusicXml(unzipMxl(buffer));
   else parsed = parseMusicXml(buffer);
 
   const title = (parsed.title || base.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ")).trim();
   const slug = norm(title).replace(/\s+/g, "-").slice(0, 60) || "imported-score";
 
+  // MIDI has no engraved voice/staff separation, so the melody is guessed by
+  // skyline (highest sounding note wins). That is reliable for a clearly
+  // voice-led line (a hymn, a chorale, a simple tune) but can pick up
+  // accompaniment or arpeggio peaks in denser piano/guitar textures — so it is
+  // NOT given the same "guaranteed accurate" confidence as MusicXML, which
+  // preserves the file's own melody voice explicitly. Always spot-check a MIDI
+  // import against the original before trusting it.
   mkdirSync(IMPORTS_DIR, { recursive: true });
   writeFileSync(path.join(IMPORTS_DIR, `${slug}.abc`), serializeImport({
-    ...parsed, title, sourceFile: base,
+    ...parsed, title, sourceFile: base, format: isMidi ? "midi" : "musicxml",
   }), "utf8");
   cache = null;
 
@@ -106,6 +114,7 @@ export function saveImportChords(id, chords) {
 
 // Same on-disk format as data/scores so parseAbcWork reads it back.
 export function serializeImport(w) {
+  const isMidi = w.format === "midi";
   const lines = [
     "X:1",
     `T:${w.title}`,
@@ -117,7 +126,10 @@ export function serializeImport(w) {
     `%%genre ${w.genre || "Imported score"}`,
     w.year ? `%%year ${w.year}` : null,
     w.sourceFile ? `%%source ${w.sourceFile}` : null,
-    `%%description Converted from an uploaded score file — exact symbolic data.`,
+    w.format ? `%%format ${w.format}` : null,
+    isMidi
+      ? `%%description Converted from an uploaded MIDI file — melody guessed by highest-note extraction; reliable for simple, clearly voice-led tunes but can mistake accompaniment for melody in denser textures. Spot-check before trusting.`
+      : `%%description Converted from an uploaded MusicXML score — exact symbolic data.`,
   ].filter(Boolean);
 
   const chords = Array.isArray(w.chords) ? w.chords : [];
@@ -141,6 +153,7 @@ export function importToSong(w) {
     mood: w.mood || "",
     description: w.description,
     source: "import",
+    format: w.format || "musicxml",
     libraryId: w.id, // addressed through the same blueprint path as the library
     measures: w.measures,
   };
