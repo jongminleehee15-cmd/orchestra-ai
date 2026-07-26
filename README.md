@@ -9,11 +9,20 @@ coherent ABC part per instrument, rendered with [abcjs](https://www.abcjs.net/).
 
 1. **`POST /api/blueprint`** — one call produces the canonical `melodyAbc`
    (single-line, concert pitch), one `chord` per measure, section assignments,
-   and a per-instrument role map.
+   and a per-instrument role map. A focused correction pass (`refineMelody`)
+   checks the melody's bar math (anacrusis/pickup-aware) and re-prompts if it's
+   off.
 2. **`POST /api/part`** — per-instrument calls that each *receive* the canonical
    melody + chords. For measures a part carries the melody, the server injects
-   the **exact per-measure notes** so the tune is reproduced, not reinvented.
-   Other measures harmonize the chords and stay out of the melody register.
+   the **exact per-measure notes**, pre-transposed in code (not by prompt) for
+   transposing instruments, so the tune is reproduced, not reinvented. After
+   generation, the part is checked against the canonical melody pitch-for-pitch
+   (`checkPartAgainstMelody`) and gets one targeted retry — naming the exact
+   measures and pitches that drifted — if it doesn't match. Other measures
+   harmonize the chords and stay out of the melody register.
+
+The result of that conformance check is surfaced in the UI as a melody-match
+badge on each part.
 
 The Anthropic API key lives **only** on the server (`server/.env`). The browser
 talks to `/api/*`; it never sees the key.
@@ -24,9 +33,14 @@ src/            Vite + React frontend
   components/      SongSearch, OrchestraBuilder, ParamsPanel, ScoreView, ...
   lib/             constants (instruments, theme), abc helpers
 server/         Express proxy + prompt construction
-  index.js         routes + rate limiting
-  prompts.js       search / blueprint / part prompts (melody logic)
-  lib/abcMelody.js per-measure melody slicing
+  index.js               routes + rate limiting
+  prompts.js             search / blueprint / part prompts (melody logic)
+  lib/abcMelody.js        per-measure melody slicing
+  lib/abcDuration.js      ABC note-length arithmetic (bar math)
+  lib/abcPitch.js         key signatures + exact programmatic transposition
+  lib/abcValidate.js      anacrusis-aware bar math + part-vs-melody conformance
+  lib/transpose.js        written-key math for transposing instruments
+test/run.mjs    dependency-free test suite for the lib/ modules above
 ```
 
 ## Setup
@@ -51,11 +65,20 @@ Open http://localhost:5173.
 
 `server/.env`:
 
-| var                 | default                   | purpose                          |
-| ------------------- | ------------------------- | -------------------------------- |
-| `ANTHROPIC_API_KEY` | —                         | required; never commit it        |
-| `MODEL`             | `claude-sonnet-4-20250514` | model used for all generation    |
-| `PORT`              | `3001`                    | proxy port (Vite dev proxies here) |
+| var                 | default             | purpose                            |
+| ------------------- | ------------------- | ----------------------------------- |
+| `ANTHROPIC_API_KEY` | —                   | required; never commit it           |
+| `MODEL`             | `claude-opus-4-8`   | model used for all generation       |
+| `PORT`              | `3001`              | proxy port (Vite dev proxies here)  |
+
+### Tests
+
+The bar-math, transposition, and melody-conformance logic in `server/lib/` has
+a dependency-free test suite:
+
+```bash
+node test/run.mjs
+```
 
 ## Deployment
 
