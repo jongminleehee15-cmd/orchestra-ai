@@ -21,3 +21,4 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+.claude/settings.local.json
