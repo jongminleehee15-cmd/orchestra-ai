@@ -4,6 +4,8 @@
 // Stage 2 adds the abcDuration section; later stages append abcPitch,
 // abcValidate, and singable sections until the suite reaches 37 tests.
 import { measureUnits, parseLen } from "../server/lib/abcDuration.js";
+import { analyzeMelody as analyzeMelodyServer } from "../server/lib/abcMelody.js";
+import { analyzeMelody as analyzeMelodyClient } from "../src/lib/melodyCheck.js";
 
 let pass = 0, fail = 0;
 const eq = (l, g, w) => {
@@ -35,6 +37,23 @@ near("two-bar rest Z2", measureUnits("Z2"), 16);
 near("legacy +f+ decoration", measureUnits("+f+C4 D4"), 8);
 near("trailing % comment", measureUnits("C4 D4 % nice"), 8);
 near("6/8 compound tuplets", measureUnits("(3GAB (3cde", { compound: true }), 4);
+
+// These exercise analyzeMelody() through its real entry points (server/lib/abcMelody.js,
+// src/lib/melodyCheck.js), not the isolated abcDuration module — a passing unit test above
+// proves the arithmetic is right, but only these prove the rewiring actually passes the
+// correct barUnits/compound through for each call site.
+console.log("\nabcMelody / melodyCheck — integration wiring (Stage 2 regression guard)");
+for (const [label, analyzeMelody] of [["server", analyzeMelodyServer], ["client", analyzeMelodyClient]]) {
+  ok(`${label}: whole-bar rests wired correctly`, analyzeMelody("Z | Z", "4/4", 2).ok);
+  ok(`${label}: chord inner-length wired correctly`, analyzeMelody("[C2E2G2] D2 E2 F2", "4/4", 1).ok);
+  ok(`${label}: 32nd-note run wired correctly`, analyzeMelody("C/4C/4C/4C/4 C/2C/2 D2 E2 F2", "4/4", 1).ok);
+  ok(`${label}: compound meter (6/8) barUnits/isCompound wired`, analyzeMelody("GAB cde", "6/8", 1).ok);
+  ok(`${label}: genuinely short bar still caught`, !analyzeMelody("C2 D2 E2", "4/4", 1).ok);
+}
+// Server-only: exercises the tuplet path specifically (client analyzeMelody has no separate
+// compound-tuplet case beyond the above, so this stays server-side to avoid a redundant assert).
+ok("server: 6/8 tuplet bar correctly measures short (4 != 6 units)",
+  !analyzeMelodyServer("(3GAB (3cde", "6/8", 1).ok);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
