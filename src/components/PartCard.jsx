@@ -22,6 +22,19 @@ export default function PartCard({ part, idx, isActive, role, S, onSelect, onGen
               {role.primaryRole}
             </span>
           )}
+          {part.status === "done" && part.conformance && (() => {
+            const { checked, mismatches, ok } = part.conformance;
+            const matched = checked - mismatches.length;
+            const badgeColor = ok ? STATUS_COLOR.done : STATUS_COLOR.error;
+            return (
+              <span
+                title={ok ? "Melody matches the canonical tune in every assigned measure" : `${mismatches.length} measure(s) drifted from the canonical melody`}
+                style={{ marginLeft: "8px", fontSize: "11px", color: badgeColor, border: `1px solid ${badgeColor}55`, background: badgeColor + "18", borderRadius: "10px", padding: "1px 8px", letterSpacing: "0.03em" }}
+              >
+                {ok ? "✓" : "⚠"} melody match: {matched}/{checked} bars
+              </span>
+            );
+          })()}
         </span>
         <span style={{ fontSize: "13px", color: statusColor, marginRight: "8px" }}>{statusIcon} {part.status}</span>
 

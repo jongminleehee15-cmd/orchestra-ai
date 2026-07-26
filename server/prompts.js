@@ -3,6 +3,16 @@ import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures } from "./lib
 import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
 import { transposeAbcBody, TRANSPOSITIONS } from "./lib/abcPitch.js";
 
+// Resolve everything an instrument's transposition needs, in one place — shared
+// by buildPartPrompt (writing the part) and the /api/part conformance check in
+// index.js (verifying it), so the two can never disagree about the written key.
+export function resolveTransposition(key, instrName) {
+  const concertKey = conventionalKey(key);
+  const { writtenKey, label, interval, transposes } = writtenKeyFor(key, instrName);
+  const transposeSpec = TRANSPOSITIONS[baseName(instrName)];
+  return { concertKey, writtenKey, label, interval, transposes, transposeSpec };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SONG SEARCH
 // ─────────────────────────────────────────────────────────────────────────────
@@ -180,14 +190,12 @@ export function buildPartPrompt({
   const { clef } = getMeta(instrName);
   // The arrangement is stored at concert pitch; work out the key THIS instrument
   // reads in (e.g. a Bb trumpet in a concert-Bb piece reads in C).
-  const concertKey = conventionalKey(key);
-  const { writtenKey, label, interval, transposes } = writtenKeyFor(key, instrName);
+  const { concertKey, writtenKey, label, interval, transposes, transposeSpec } = resolveTransposition(key, instrName);
   const melodySections = role?.melodySections || [];
   const hasMelody = melodySections.length > 0;
 
   // Transposing instruments get their notes moved to the written key IN CODE —
   // exact math, not the model transposing "by ear" from a prose instruction.
-  const transposeSpec = TRANSPOSITIONS[baseName(instrName)];
   const writtenMelodyAbc = transposes && transposeSpec
     ? transposeAbcBody(melodyAbc, {
         fromKey: concertKey, toKey: writtenKey,
@@ -267,6 +275,28 @@ ABC NOTATION RULES:
 - Dynamics: !p! !mp! !mf! !f! !ff! placed before a note
 - Slurs: (notes), ties: note-note
 - Stay in idiomatic range for ${instrName}
+- NO markdown, NO backticks, NO explanations — raw ABC only, starting with X:1`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3b. PART CORRECTION (one targeted retry when checkPartAgainstMelody fails)
+//     Names the exact measures that drifted from the canonical melody and the
+//     exact pitches required, instead of re-explaining the whole task.
+// ─────────────────────────────────────────────────────────────────────────────
+export function buildPartCorrectionPrompt({ instrName, writtenKey, previousAbc, mismatches }) {
+  const fixList = mismatches
+    .map((m) => `- measure ${m.measure}: must be exactly "${m.expected}" (you wrote "${m.got}")`)
+    .join("\n");
+  return `You are correcting an ABC part for ${instrName}. The melody drifted from the canonical tune in some measures. Fix ONLY these:
+
+${fixList}
+
+PREVIOUS PART:
+${previousAbc}
+
+Rules:
+- Output the COMPLETE corrected part (every measure), not just the fixed ones.
+- In the listed measures, change ONLY the pitches to exactly match what's required. Everything else — other measures, dynamics, header (K:${writtenKey}) — stays identical to the previous part.
 - NO markdown, NO backticks, NO explanations — raw ABC only, starting with X:1`;
 }
 

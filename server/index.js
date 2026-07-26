@@ -6,9 +6,12 @@ import { PORT, MODEL, ANTHROPIC_API_KEY, tokensForMeasures } from "./config.js";
 import { callAnthropic, extractJson } from "./anthropic.js";
 import {
   buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt, buildMelodyCheckPrompt,
-  buildGroundTruthPrompt,
+  buildGroundTruthPrompt, buildPartCorrectionPrompt, resolveTransposition,
 } from "./prompts.js";
-import { analyzeMelody } from "./lib/abcMelody.js";
+// analyzeMelody comes from abcValidate.js (not abcMelody.js) because it's the
+// anacrusis-aware version — the old one flagged pickup tunes (Happy Birthday,
+// most hymns) as broken and burned correction calls fixing bars that were fine.
+import { analyzeMelody, checkPartAgainstMelody } from "./lib/abcValidate.js";
 
 const app = express();
 
@@ -154,11 +157,49 @@ app.post("/api/part", handler(async (req, res) => {
   const p = req.body || {};
   if (!p.instrName) throw Object.assign(new Error("instrName is required"), { status: 400 });
   const measures = Number(p.measures) || 8;
-  const abc = await callAnthropic({
+  let abc = cleanAbc(await callAnthropic({
     prompt: buildPartPrompt({ ...p, measures }),
     maxTokens: tokensForMeasures(measures),
-  });
-  res.json({ abc: cleanAbc(abc) });
+  }));
+
+  // Verify the part actually reproduces the canonical melody in the measures it
+  // was assigned to carry it — bar math alone can't catch a wrong-but-well-formed
+  // tune. One targeted retry naming the exact failing measures if it doesn't.
+  let conformance = null;
+  const melodySections = p.role?.melodySections || [];
+  if (melodySections.length > 0 && p.melodyAbc) {
+    const { concertKey, writtenKey, transposes, transposeSpec } = resolveTransposition(p.key, p.instrName);
+    const checkArgs = {
+      melodyAbc: p.melodyAbc,
+      melodySections,
+      concertKey,
+      transposition: transposes && transposeSpec
+        ? { diatonic: transposeSpec.diatonic, semitones: transposeSpec.semitones, writtenKey }
+        : null,
+      timeSignature: p.timeSignature,
+    };
+    conformance = checkPartAgainstMelody(abc, checkArgs);
+
+    if (!conformance.ok) {
+      try {
+        const retryAbc = cleanAbc(await callAnthropic({
+          prompt: buildPartCorrectionPrompt({
+            instrName: p.instrName, writtenKey, previousAbc: abc, mismatches: conformance.mismatches,
+          }),
+          maxTokens: tokensForMeasures(measures),
+        }));
+        const retryConformance = checkPartAgainstMelody(retryAbc, checkArgs);
+        if ((retryConformance.accuracy ?? -1) >= (conformance.accuracy ?? -1)) {
+          abc = retryAbc;
+          conformance = retryConformance;
+        }
+      } catch {
+        // network/model error on the retry — keep the original part + its conformance result
+      }
+    }
+  }
+
+  res.json({ abc, conformance });
 }));
 
 // Strip any stray fences/prose before the leading X: header.

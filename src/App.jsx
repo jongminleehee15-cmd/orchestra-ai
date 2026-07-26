@@ -98,10 +98,10 @@ export default function App() {
   async function generatePart(idx, plan = melodyPlan) {
     const part = scoreParts[idx];
     if (!part || part.status === "loading") return;
-    setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "loading", abcText: null, errMsg: null } : p)));
+    setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "loading", abcText: null, errMsg: null, conformance: null } : p)));
     const otherInstruments = expandVoices(selectedInstrs).map((v) => v.name).join(", ");
     try {
-      const abc = await generateInstrumentABC({
+      const { abc, conformance } = await generateInstrumentABC({
         songTitle, songArtist, songGenre, songNotes,
         instrName: part.instrName,
         style, density, tempoFeel, key,
@@ -110,7 +110,7 @@ export default function App() {
         melodyAbc: plan?.melodyAbc,
         chords: plan?.chords,
       });
-      setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc } : p)));
+      setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc, conformance } : p)));
     } catch (e) {
       setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "error", errMsg: e.message } : p)));
     }
@@ -130,7 +130,7 @@ export default function App() {
   async function applyMelodyEdit(newMelodyAbc) {
     const newPlan = { ...(melodyPlan || {}), melodyAbc: newMelodyAbc };
     setMelodyPlan(newPlan);
-    setScoreParts((prev) => prev.map((p) => ({ ...p, status: "idle", abcText: null, errMsg: null })));
+    setScoreParts((prev) => prev.map((p) => ({ ...p, status: "idle", abcText: null, errMsg: null, conformance: null })));
     setViewIdx(0);
     const count = scoreParts.length;
     for (let i = 0; i < count; i++) {

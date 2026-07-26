@@ -32,8 +32,9 @@ export async function generateBlueprint(params) {
   return plan;
 }
 
-// → ABC text for a single instrument part
+// → { abc, conformance } for a single instrument part. conformance is null when
+// the part carries no melody sections; otherwise { ok, checked, accuracy, mismatches }.
 export async function generateInstrumentABC(params) {
-  const { abc } = await postJson("/api/part", params);
-  return abc;
+  const { abc, conformance } = await postJson("/api/part", params);
+  return { abc, conformance };
 }

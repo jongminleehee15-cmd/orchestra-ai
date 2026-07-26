@@ -7,7 +7,8 @@ import { measureUnits, parseLen } from "../server/lib/abcDuration.js";
 import { analyzeMelody as analyzeMelodyServer } from "../server/lib/abcMelody.js";
 import { analyzeMelody as analyzeMelodyClient } from "../src/lib/melodyCheck.js";
 import { transposeAbcBody } from "../server/lib/abcPitch.js";
-import { buildPartPrompt } from "../server/prompts.js";
+import { buildPartPrompt, buildPartCorrectionPrompt, resolveTransposition } from "../server/prompts.js";
+import { analyzeMelody as analyzeMelodyValidate, checkPartAgainstMelody } from "../server/lib/abcValidate.js";
 
 let pass = 0, fail = 0;
 const eq = (l, g, w) => {
@@ -107,6 +108,56 @@ console.log("\nprompts.js — programmatic transposition wiring (Stage 3 regress
       otherInstruments: "x", role: { primaryRole: "melody", melodySections: ["mm.1-2"] },
       melodyAbc, chords: ["C", "C"],
     }).includes("transpose all notes"));
+}
+
+console.log("\nabcValidate — bar math and part conformance");
+ok("pickup bar accepted", analyzeMelodyValidate("G | c2 c2 d2 e2 | f8 |]", "4/4", 2).ok);
+ok("genuinely short bar still caught", !analyzeMelodyValidate("C2 D2 E2 | F2 G2 A2 B2 |]", "4/4", 2).ok);
+ok("Z tacet bar accepted", analyzeMelodyValidate("C2 D2 E2 F2 | Z | G8 | A8 |]", "4/4", 4).ok);
+{
+  const mel = "E2 E2 F2 G2 | G2 F2 E2 D2";
+  const good = "X:1\nK:C\ne2 e2 f2 g2 | g2 f2 e2 d2 |]";
+  const bad = "X:1\nK:C\ne2 e2 f2 g2 | g2 a2 g2 e2 |]";
+  ok("octave-displaced but correct tune passes",
+    checkPartAgainstMelody(good, { melodyAbc: mel, melodySections: ["mm.1-2"], concertKey: "C" }).ok);
+  ok("drifted measure is caught",
+    !checkPartAgainstMelody(bad, { melodyAbc: mel, melodySections: ["mm.1-2"], concertKey: "C" }).ok);
+  const tpt = "X:1\nK:D\nf2 f2 g2 a2 | a2 g2 f2 e2 |]";
+  const tr = { diatonic: 1, semitones: 2, writtenKey: "D" };
+  ok("correctly transposed Bb trumpet part passes",
+    checkPartAgainstMelody(tpt, { melodyAbc: mel, melodySections: ["mm.1-2"], concertKey: "C", transposition: tr }).ok);
+  ok("trumpet that forgot to transpose is caught",
+    !checkPartAgainstMelody(tpt.replace("f2 f2 g2 a2", "e2 e2 f2 g2"),
+      { melodyAbc: mel, melodySections: ["mm.1-2"], concertKey: "C", transposition: tr }).ok);
+}
+
+console.log("\nStage 4 — /api/part conformance wiring (regression guard)");
+{
+  // Mirrors exactly what server/index.js does: resolveTransposition() then
+  // checkPartAgainstMelody() with its output — not the isolated function in
+  // a hand-built context.
+  const melodyAbc = "E2 E2 F2 G2 | G2 F2 E2 D2 |]";
+  const { concertKey, writtenKey, transposes, transposeSpec } = resolveTransposition("C", "Trumpet");
+  const checkArgs = {
+    melodyAbc, melodySections: ["mm.1-2"], concertKey,
+    transposition: transposes && transposeSpec
+      ? { diatonic: transposeSpec.diatonic, semitones: transposeSpec.semitones, writtenKey }
+      : null,
+    timeSignature: "4/4",
+  };
+  const correctTrumpetAbc = "X:1\nK:D\nf2 f2 g2 a2 | a2 g2 f2 e2 |]";
+  const driftedTrumpetAbc = "X:1\nK:D\ne2 e2 f2 g2 | a2 g2 f2 e2 |]"; // measure 1 wrong
+  const goodResult = checkPartAgainstMelody(correctTrumpetAbc, checkArgs);
+  const badResult = checkPartAgainstMelody(driftedTrumpetAbc, checkArgs);
+  ok("resolveTransposition + checkPartAgainstMelody: correct trumpet part passes", goodResult.ok);
+  ok("resolveTransposition + checkPartAgainstMelody: drifted measure caught", !badResult.ok);
+  eq("drifted measure identified as measure 1", badResult.mismatches.map((m) => m.measure), [1]);
+
+  const correction = buildPartCorrectionPrompt({
+    instrName: "Trumpet", writtenKey, previousAbc: driftedTrumpetAbc, mismatches: badResult.mismatches,
+  });
+  ok("correction prompt names the exact failing measure and required pitches",
+    correction.includes('measure 1: must be exactly "F2 F2 G2 A2"'));
 }
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
