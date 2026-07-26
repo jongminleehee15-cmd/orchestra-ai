@@ -53,7 +53,11 @@
       "Bash(node *)",
       "Bash(echo \"started with pid $!\")",
       "Bash(npm --prefix server install fast-xml-parser)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(powershell -Command \"Get-Process -Id 29552 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path\" 2>&1)",
+      "Bash(npx vite *)",
+      "Bash(grep -o \"<time-modification>.\\\\{0,150\\\\}\" _test_berceuse.musicxml)",
+      "Bash(powershell -Command \"Get-Process -Id 14080 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName\")"
     ]
   }
 }
