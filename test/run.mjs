@@ -6,6 +6,8 @@
 import { measureUnits, parseLen } from "../server/lib/abcDuration.js";
 import { analyzeMelody as analyzeMelodyServer } from "../server/lib/abcMelody.js";
 import { analyzeMelody as analyzeMelodyClient } from "../src/lib/melodyCheck.js";
+import { transposeAbcBody } from "../server/lib/abcPitch.js";
+import { buildPartPrompt } from "../server/prompts.js";
 
 let pass = 0, fail = 0;
 const eq = (l, g, w) => {
@@ -54,6 +56,58 @@ for (const [label, analyzeMelody] of [["server", analyzeMelodyServer], ["client"
 // compound-tuplet case beyond the above, so this stays server-side to avoid a redundant assert).
 ok("server: 6/8 tuplet bar correctly measures short (4 != 6 units)",
   !analyzeMelodyServer("(3GAB (3cde", "6/8", 1).ok);
+
+console.log("\nabcPitch — transposition");
+eq("C major up M2 (Bb trumpet)",
+  transposeAbcBody("C D E F G A B c", { fromKey: "C", toKey: "D", diatonic: 1, semitones: 2 }),
+  "D E F G A B c d");
+eq("F major up M6 (Eb alto sax)",
+  transposeAbcBody("F G A _B c d e f", { fromKey: "F", toKey: "D", diatonic: 5, semitones: 9 }),
+  "d e f g a b c' d'");
+eq("C up P5 (F horn)",
+  transposeAbcBody("E2 E2 F2 G2", { fromKey: "C", toKey: "G", diatonic: 4, semitones: 7 }),
+  "B2 B2 c2 d2");
+eq("chromatic respelling",
+  transposeAbcBody("_E2 =E2 F2 G2", { fromKey: "Eb", toKey: "F", diatonic: 1, semitones: 2 }),
+  "F2 ^F2 G2 A2");
+eq("bar-local accidentals reset at barline",
+  transposeAbcBody("^F F | F2 G2", { fromKey: "C", toKey: "D", diatonic: 1, semitones: 2 }),
+  "^G ^G | G2 A2");
+eq("chords transpose",
+  transposeAbcBody("[CEG]4", { fromKey: "C", toKey: "D", diatonic: 1, semitones: 2 }),
+  "[DFA]4");
+{
+  const o = "E2 E2 F2 G2 | G2 F2 E2 D2 |]";
+  const up = transposeAbcBody(o, { fromKey: "C", toKey: "D", diatonic: 1, semitones: 2 });
+  eq("round-trip is lossless",
+    transposeAbcBody(up, { fromKey: "D", toKey: "C", diatonic: -1, semitones: -2 }), o);
+}
+
+console.log("\nprompts.js — programmatic transposition wiring (Stage 3 regression guard)");
+{
+  const melodyAbc = "E2 E2 F2 G2 | G2 F2 E2 D2 |]";
+  const excerptFor = (instrName) => {
+    const prompt = buildPartPrompt({
+      songTitle: "Test", instrName, style: "x", density: "x", tempoFeel: "x",
+      key: "C", timeSignature: "4/4", bpm: 100, measures: 2,
+      otherInstruments: "x", role: { primaryRole: "melody", melodySections: ["mm.1-2"] },
+      melodyAbc, chords: ["C", "C"],
+    });
+    const m = prompt.match(/measure 1: (.*)\n {2}measure 2: (.*)/);
+    return m ? `${m[1]} | ${m[2]}` : null;
+  };
+  eq("Bb trumpet excerpt pre-transposed up a M2", excerptFor("Trumpet"), "F2 F2 G2 A2 | A2 G2 F2 E2");
+  eq("F horn excerpt pre-transposed up a P5", excerptFor("French Horn"), "B2 B2 c2 d2 | d2 c2 B2 A2");
+  eq("numbered voice (Trumpet 2) still transposes via baseName", excerptFor("Trumpet 2"), "F2 F2 G2 A2 | A2 G2 F2 E2");
+  eq("non-transposing instrument excerpt stays at concert pitch", excerptFor("Violin"), "E2 E2 F2 G2 | G2 F2 E2 D2");
+  ok("no ear-transposition prose remains in the prompt",
+    !buildPartPrompt({
+      songTitle: "Test", instrName: "Trumpet", style: "x", density: "x", tempoFeel: "x",
+      key: "C", timeSignature: "4/4", bpm: 100, measures: 2,
+      otherInstruments: "x", role: { primaryRole: "melody", melodySections: ["mm.1-2"] },
+      melodyAbc, chords: ["C", "C"],
+    }).includes("transpose all notes"));
+}
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

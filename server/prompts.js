@@ -1,6 +1,7 @@
-import { getMeta } from "./lib/instrMeta.js";
+import { getMeta, baseName } from "./lib/instrMeta.js";
 import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
+import { transposeAbcBody, TRANSPOSITIONS } from "./lib/abcPitch.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SONG SEARCH
@@ -184,8 +185,19 @@ export function buildPartPrompt({
   const melodySections = role?.melodySections || [];
   const hasMelody = melodySections.length > 0;
 
-  // Per-measure exact notes for the measures THIS part must play as melody.
-  const excerpts = hasMelody ? buildMelodyExcerpts(melodyAbc, melodySections) : "";
+  // Transposing instruments get their notes moved to the written key IN CODE —
+  // exact math, not the model transposing "by ear" from a prose instruction.
+  const transposeSpec = TRANSPOSITIONS[baseName(instrName)];
+  const writtenMelodyAbc = transposes && transposeSpec
+    ? transposeAbcBody(melodyAbc, {
+        fromKey: concertKey, toKey: writtenKey,
+        diatonic: transposeSpec.diatonic, semitones: transposeSpec.semitones,
+      })
+    : melodyAbc;
+
+  // Per-measure exact notes for the measures THIS part must play as melody,
+  // already in this instrument's written key.
+  const excerpts = hasMelody ? buildMelodyExcerpts(writtenMelodyAbc, melodySections) : "";
 
   const roleBlock = buildRoleInstruction(instrName, role);
 
@@ -199,9 +211,9 @@ export function buildPartPrompt({
   // Transposing instruments read in a different key than concert pitch.
   const transposeBlock = transposes
     ? `TRANSPOSING INSTRUMENT — ${instrName} is a transposing instrument (${label}); the concert key is ${concertKey}:
-- Write this WHOLE part in ${writtenKey} and put K:${writtenKey} in the header.
-- Every pitch you write sounds ${interval.replace(/ up.*/, "")} LOWER than written, so transpose all notes (melody excerpts included) UP by ${interval} from the concert pitches in the reference. Keep shapes and rhythms identical — only the written pitch/key changes.
-- Use the ${writtenKey} key signature and spell accidentals conventionally so the part is easy to read.
+- Write this WHOLE part in ${writtenKey} and put K:${writtenKey} in the header. Every pitch you write sounds ${interval.replace(/ up.*/, "")} LOWER than written — that's why the key differs from concert pitch.
+- The melody excerpt below is already transposed ${interval} into ${writtenKey} for you — copy those pitches exactly, do NOT re-transpose them yourself.
+- For your own accompaniment/harmony writing (non-melody measures), use the ${writtenKey} key signature and spell accidentals conventionally so the part is easy to read.
 `
     : "";
 
@@ -213,16 +225,16 @@ ${melodyAbc}
 CHORDS (one per measure): ${Array.isArray(chords) ? chords.join(" | ") : chords || ""}
 
 USING THE REFERENCE:
-- In measures where YOU carry the melody, play THE EXACT MELODY shown below${transposes ? `, transposed ${interval} into your written key of ${writtenKey}` : ", transposed only as needed to sit in your instrument's range"} — keep every pitch and rhythm recognizable (light ornamentation OK), do NOT substitute a different tune.
+- In measures where YOU carry the melody, play THE EXACT MELODY given in "EXACT MELODY YOU MUST PLAY" below${transposes ? ` (already transposed into your written key of ${writtenKey} — copy it, do not transpose it yourself)` : " (transposed only as needed to sit in your instrument's range)"} — keep every pitch and rhythm recognizable (light ornamentation OK), do NOT substitute a different tune.
 - In all other measures, write a MOVING, idiomatic accompaniment from the chords — do NOT sit on static held roots. Use arpeggiation, stepwise or walking motion, a rhythmic or harmonic countermelody, passing tones and suspensions — while staying register-clear of the melody (sit below it) so the tune still sings through.
 `
     : "";
 
   const excerptBlock = excerpts
     ? `
-EXACT MELODY YOU MUST PLAY (${transposes ? `these are CONCERT pitches — rewrite each ${interval} into ${writtenKey}, keeping the shape and rhythm identical` : "reproduce these pitches/rhythms, transposed only to fit your range"}):
+EXACT MELODY YOU MUST PLAY (${transposes ? `already transposed into your written key of ${writtenKey} — copy these pitches exactly, do NOT transpose them again` : "reproduce these pitches/rhythms, transposed only to fit your range"}):
 ${excerpts}
-Each "measure N" above must appear as that same measure number in your output, melody intact${transposes ? ", transposed into your written key" : ""}.
+Each "measure N" above must appear as that same measure number in your output, melody intact.
 `
     : "";
 
@@ -239,7 +251,7 @@ ${roleBlock}
 ${arrangingBlock}
 
 ${transposeBlock}
-CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `transposed ${interval} into ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower and play the moving accompaniment described above, never a static drone.
+CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `already written in ${writtenKey} — copy as given` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower and play the moving accompaniment described above, never a static drone.
 
 ABC NOTATION RULES:
 - Start: X:1
