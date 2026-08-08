@@ -10,6 +10,8 @@ import { transposeAbcBody } from "../server/lib/abcPitch.js";
 import { buildPartPrompt, buildPartCorrectionPrompt, resolveTransposition } from "../server/prompts.js";
 import { analyzeMelody as analyzeMelodyValidate, checkPartAgainstMelody } from "../server/lib/abcValidate.js";
 import { isValidMeasures, ALLOWED_MEASURES, MAX_INSTRUMENTS } from "../server/lib/limits.js";
+import { melodyToSyllables, toAbcLyricLine, annotateAbcWithSyllables } from "../src/lib/singable.js";
+import { buildLeadSheetAbc } from "../src/lib/abcHelpers.js";
 
 let pass = 0, fail = 0;
 const eq = (l, g, w) => {
@@ -169,6 +171,36 @@ ok("a value between valid options is rejected", !isValidMeasures(20));
 ok("a non-numeric value is rejected", !isValidMeasures("banana"));
 eq("ALLOWED_MEASURES matches the client's MEASURE_OPTIONS", ALLOWED_MEASURES, [4, 8, 12, 16, 24, 32, 48, 64, 96, 128]);
 ok("MAX_INSTRUMENTS is a sane cap", MAX_INSTRUMENTS > 0 && MAX_INSTRUMENTS <= 32);
+
+console.log("\nsingable — solfege / sol-fa / scale degrees");
+eq("major, movable do",
+  toAbcLyricLine(melodyToSyllables("E2 E2 F2 G2 | G2 F2 E2 D2", { key: "C" })),
+  "w: mi mi fa sol | sol fa mi re");
+eq("same tune in D gives the same syllables",
+  toAbcLyricLine(melodyToSyllables("^F2 ^F2 G2 A2", { key: "D" })), "w: mi mi fa sol");
+eq("minor, do-based", toAbcLyricLine(melodyToSyllables("A2 B2 c2 d2", { key: "Am" })), "w: do re me fa");
+eq("minor, la-based (Kodaly)",
+  toAbcLyricLine(melodyToSyllables("A2 B2 c2 d2", { key: "Am", la_based: true })), "w: la ti do re");
+eq("chromatic spelling", toAbcLyricLine(melodyToSyllables("C ^C D | E _E D", { key: "C" })), "w: do di re | mi me re");
+eq("scale degrees", toAbcLyricLine(melodyToSyllables("E2 F2 G2", { key: "C", system: "degrees" })), "w: 3 4 5");
+eq("rests skip a note", toAbcLyricLine(melodyToSyllables("C2 z2 E2", { key: "C" })), "w: do * mi");
+
+console.log("\nStage 6 — ScoreView 'Sing' toggle wiring (regression guard)");
+{
+  // Mirrors what ScoreView.jsx actually does: buildLeadSheetAbc() to produce
+  // the rendered lead sheet, then annotateAbcWithSyllables() on that exact
+  // output — not a hand-built ABC string.
+  const leadSheetAbc = buildLeadSheetAbc("E2 E2 F2 G2 | G2 F2 E2 D2 |]", { key: "C", timeSig: "4/4", bpm: 100 });
+  const annotated = annotateAbcWithSyllables(leadSheetAbc, { key: "C", system: "solfege" });
+  ok("annotated lead sheet keeps the original header lines",
+    annotated.includes("K:C") && annotated.includes("Q:1/4=100"));
+  ok("annotated lead sheet inserts a w: line under the melody",
+    annotated.includes("w: mi mi fa sol | sol fa mi re"));
+  ok("toggling system (degrees) changes the syllable line",
+    annotateAbcWithSyllables(leadSheetAbc, { key: "C", system: "degrees" }).includes("w: 3 3 4 5 | 5 4 3 2"));
+  ok("melody with no K: header (malformed input) degrades to unchanged input",
+    annotateAbcWithSyllables("X:1\nT:no key line\nC2 D2", { key: "C" }) === "X:1\nT:no key line\nC2 D2");
+}
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { SERIF } from "../lib/constants.js";
 import { buildLeadSheetAbc, buildScoreAbc } from "../lib/abcHelpers.js";
+import { annotateAbcWithSyllables } from "../lib/singable.js";
 import { SecH } from "./ui.jsx";
 import AbcRenderer from "./AbcRenderer.jsx";
 import PartCard from "./PartCard.jsx";
 import VisualMelodyEditor from "./VisualMelodyEditor.jsx";
+
+const SING_SYSTEMS = [
+  { value: "solfege", label: "Solfege (do re mi)" },
+  { value: "solfa", label: "Tonic sol-fa (d r m)" },
+  { value: "degrees", label: "Scale degrees (1 2 3)" },
+];
 
 export default function ScoreView({
   S, songTitle, songArtist, songKey, timeSig, bpm, style, measures,
@@ -12,12 +19,19 @@ export default function ScoreView({
   onGeneratePart, onGenerateAll, onApplyMelody, onRetryPlan, onReset,
 }) {
   const [editing, setEditing] = useState(false);
+  const [singing, setSinging] = useState(false);
+  const [singSystem, setSingSystem] = useState("solfege");
   const doneCount = scoreParts.filter((p) => p.status === "done").length;
   const totalCount = scoreParts.length;
   const anyLoading = scoreParts.some((p) => p.status === "loading");
   const planBusy = planStatus === "loading";
 
   const leadSheetAbc = buildLeadSheetAbc(melodyPlan?.melodyAbc, { key: songKey, timeSig, bpm });
+  // No AI, no tokens — solfege is a pure function of (notes, key), computed
+  // client-side from the ABC the app already has.
+  const displayAbc = singing && leadSheetAbc
+    ? annotateAbcWithSyllables(leadSheetAbc, { key: songKey, system: singSystem })
+    : leadSheetAbc;
 
   const allDisabled = anyLoading || doneCount === totalCount || planBusy;
 
@@ -85,9 +99,32 @@ export default function ScoreView({
               Canonical Melody <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>— shared reference for every part</span>
             </SecH>
             {!editing && melodyPlan?.melodyAbc && (
-              <button onClick={() => setEditing(true)} style={{ padding: "5px 12px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF, whiteSpace: "nowrap" }}>
-                ✎ Edit melody
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                {singing && (
+                  <select
+                    value={singSystem}
+                    onChange={(e) => setSingSystem(e.target.value)}
+                    style={{ padding: "5px 8px", background: S.surface2, border: `1px solid ${S.border}`, color: S.text, borderRadius: "3px", fontSize: "12px", fontFamily: SERIF }}
+                  >
+                    {SING_SYSTEMS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                )}
+                <button
+                  onClick={() => setSinging((v) => !v)}
+                  title="Show do-re-mi syllables under the melody — no AI, computed from the notes"
+                  style={{
+                    padding: "5px 12px", borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF, whiteSpace: "nowrap",
+                    background: singing ? S.gold + "22" : "transparent",
+                    border: `1px solid ${singing ? S.gold : S.goldDim}`,
+                    color: S.gold,
+                  }}
+                >
+                  🎤 Sing
+                </button>
+                <button onClick={() => setEditing(true)} style={{ padding: "5px 12px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF, whiteSpace: "nowrap" }}>
+                  ✎ Edit melody
+                </button>
+              </div>
             )}
           </div>
 
@@ -104,7 +141,7 @@ export default function ScoreView({
             />
           ) : (
             <>
-              <AbcRenderer uid="lead-melody" abcText={leadSheetAbc} />
+              <AbcRenderer uid={`lead-melody-${singing ? singSystem : "plain"}`} abcText={displayAbc} />
               {melodyPlan?.melodySummary && (
                 <p style={{ margin: "10px 2px 0", fontSize: "12px", color: S.muted, fontStyle: "italic", lineHeight: 1.6 }}>{melodyPlan.melodySummary}</p>
               )}
