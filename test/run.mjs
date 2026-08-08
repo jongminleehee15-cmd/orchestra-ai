@@ -9,6 +9,7 @@ import { analyzeMelody as analyzeMelodyClient } from "../src/lib/melodyCheck.js"
 import { transposeAbcBody } from "../server/lib/abcPitch.js";
 import { buildPartPrompt, buildPartCorrectionPrompt, resolveTransposition } from "../server/prompts.js";
 import { analyzeMelody as analyzeMelodyValidate, checkPartAgainstMelody } from "../server/lib/abcValidate.js";
+import { isValidMeasures, ALLOWED_MEASURES, MAX_INSTRUMENTS } from "../server/lib/limits.js";
 
 let pass = 0, fail = 0;
 const eq = (l, g, w) => {
@@ -159,6 +160,15 @@ console.log("\nStage 4 — /api/part conformance wiring (regression guard)");
   ok("correction prompt names the exact failing measure and required pitches",
     correction.includes('measure 1: must be exactly "F2 F2 G2 A2"'));
 }
+
+console.log("\nStage 5 — input clamping (server-side hardening)");
+ok("4 is a valid measures option", isValidMeasures(4));
+ok("128 is a valid measures option", isValidMeasures(128));
+ok("an arbitrary huge value is rejected", !isValidMeasures(10000));
+ok("a value between valid options is rejected", !isValidMeasures(20));
+ok("a non-numeric value is rejected", !isValidMeasures("banana"));
+eq("ALLOWED_MEASURES matches the client's MEASURE_OPTIONS", ALLOWED_MEASURES, [4, 8, 12, 16, 24, 32, 48, 64, 96, 128]);
+ok("MAX_INSTRUMENTS is a sane cap", MAX_INSTRUMENTS > 0 && MAX_INSTRUMENTS <= 32);
 
 console.log(`\n${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

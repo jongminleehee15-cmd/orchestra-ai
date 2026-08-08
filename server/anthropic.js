@@ -10,7 +10,7 @@ import {
 // model can look up real song data (chords, key, structure) instead of relying
 // on memory. Server tools may return stop_reason "pause_turn" mid-loop — the
 // API expects us to echo the assistant turn back and re-request to resume.
-export async function callAnthropic({ prompt, maxTokens, webSearch = false, maxSearches = 5 }) {
+export async function callAnthropic({ prompt, maxTokens, webSearch = false, maxSearches = 5, model = MODEL }) {
   if (!ANTHROPIC_API_KEY) {
     const err = new Error("Server is missing ANTHROPIC_API_KEY. Set it in server/.env.");
     err.status = 500;
@@ -25,7 +25,7 @@ export async function callAnthropic({ prompt, maxTokens, webSearch = false, maxS
 
   let text = "";
   for (let turn = 0; turn < 6; turn++) {
-    const data = await postMessages({ messages, maxTokens, tools });
+    const data = await postMessages({ messages, maxTokens, tools, model });
     text += (data.content || [])
       .map((b) => (b.type === "text" ? b.text : ""))
       .join("");
@@ -35,8 +35,8 @@ export async function callAnthropic({ prompt, maxTokens, webSearch = false, maxS
   return text;
 }
 
-async function postMessages({ messages, maxTokens, tools }) {
-  const body = { model: MODEL, max_tokens: maxTokens, messages };
+async function postMessages({ messages, maxTokens, tools, model }) {
+  const body = { model, max_tokens: maxTokens, messages };
   if (tools) body.tools = tools;
 
   const resp = await fetch(ANTHROPIC_URL, {
@@ -61,7 +61,7 @@ async function postMessages({ messages, maxTokens, tools }) {
     // degrade gracefully to a plain (memory-only) request instead of failing.
     if (resp.status === 400 && tools && /web_search/i.test(detail)) {
       console.warn("web_search tool rejected by model — retrying without it:", detail);
-      return postMessages({ messages, maxTokens });
+      return postMessages({ messages, maxTokens, model });
     }
     const err = new Error(`Anthropic API ${resp.status}: ${detail}`);
     err.status = resp.status === 401 ? 500 : 502; // 401 = our key problem

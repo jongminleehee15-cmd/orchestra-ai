@@ -65,11 +65,13 @@ Open http://localhost:5173.
 
 `server/.env`:
 
-| var                 | default             | purpose                            |
-| ------------------- | ------------------- | ----------------------------------- |
-| `ANTHROPIC_API_KEY` | —                   | required; never commit it           |
-| `MODEL`             | `claude-opus-4-8`   | model used for all generation       |
-| `PORT`              | `3001`              | proxy port (Vite dev proxies here)  |
+| var                 | default                  | purpose                                          |
+| ------------------- | ------------------------ | ------------------------------------------------- |
+| `ANTHROPIC_API_KEY` | —                        | required; never commit it                         |
+| `MODEL`             | `claude-opus-4-8`        | model used for composition (blueprint + parts)    |
+| `RETRIEVAL_MODEL`   | `claude-sonnet-5`        | cheaper model used for search + ground-truth lookup |
+| `PORT`              | `3001`                   | proxy port (Vite dev proxies here)                |
+| `FRONTEND_ORIGIN`   | `http://localhost:5173`  | CORS is locked to this origin — set it to the deployed frontend's URL in production |
 
 ### Tests
 
@@ -84,7 +86,9 @@ node test/run.mjs
 
 - **Frontend** → Vercel / Netlify (build: `npm run build`, output `dist/`).
 - **Backend** → Render / Railway (`npm --prefix server start`), with
-  `ANTHROPIC_API_KEY` set in the host dashboard.
+  `ANTHROPIC_API_KEY` and `FRONTEND_ORIGIN` (the deployed frontend's URL) set
+  in the host dashboard. Without `FRONTEND_ORIGIN`, CORS defaults to the local
+  Vite dev origin and blocks the real frontend in the browser.
 - Point the frontend's `/api/*` at the deployed backend (rewrite or env-based
   base URL).
 

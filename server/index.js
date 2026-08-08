@@ -2,7 +2,9 @@ import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 
-import { PORT, MODEL, ANTHROPIC_API_KEY, tokensForMeasures } from "./config.js";
+import {
+  PORT, MODEL, RETRIEVAL_MODEL, ANTHROPIC_API_KEY, FRONTEND_ORIGIN, tokensForMeasures,
+} from "./config.js";
 import { callAnthropic, extractJson } from "./anthropic.js";
 import {
   buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt, buildMelodyCheckPrompt,
@@ -12,12 +14,20 @@ import {
 // anacrusis-aware version — the old one flagged pickup tunes (Happy Birthday,
 // most hymns) as broken and burned correction calls fixing bars that were fine.
 import { analyzeMelody, checkPartAgainstMelody } from "./lib/abcValidate.js";
+import { ALLOWED_MEASURES, MAX_INSTRUMENTS, isValidMeasures } from "./lib/limits.js";
 
 const app = express();
 
+// Behind a platform proxy (Render/Railway/Vercel) every request otherwise looks
+// like it comes from the proxy's IP, so the rate limiter below either buckets
+// every user together or throws. Must be set before the limiter is mounted.
+app.set("trust proxy", 1);
+
 // Body size cap so a stranger can't post a giant payload (Phase 2 hardening).
 app.use(express.json({ limit: "64kb" }));
-app.use(cors());
+// Locked to the deployed frontend — app.use(cors()) was wide open, letting
+// anyone who found the backend URL spend the API budget from a browser.
+app.use(cors({ origin: FRONTEND_ORIGIN }));
 
 // Per-IP rate limit so deployment doesn't burn API credits to abusers.
 const limiter = rateLimit({
@@ -52,6 +62,7 @@ app.post("/api/search", handler(async (req, res) => {
     maxTokens: 2000,
     webSearch: true,
     maxSearches: 3,
+    model: RETRIEVAL_MODEL, // formatting/retrieval, not composition — no need for Opus
   });
   const songs = extractJson(text);
   res.json({ songs: Array.isArray(songs) ? songs : [] });
@@ -64,7 +75,13 @@ app.post("/api/blueprint", handler(async (req, res) => {
   if (!Array.isArray(p.instruments) || p.instruments.length === 0) {
     throw Object.assign(new Error("instruments are required"), { status: 400 });
   }
-  const measures = Number(p.measures) || 8;
+  if (p.instruments.length > MAX_INSTRUMENTS) {
+    throw Object.assign(new Error(`Too many instruments (max ${MAX_INSTRUMENTS}).`), { status: 400 });
+  }
+  if (!isValidMeasures(p.measures)) {
+    throw Object.assign(new Error(`measures must be one of: ${ALLOWED_MEASURES.join(", ")}`), { status: 400 });
+  }
+  const measures = Number(p.measures);
 
   // Ground-truth research pass — look the song up on public chord/tab sources
   // with the web_search tool so the blueprint starts from documented key/chords/
@@ -86,27 +103,41 @@ app.post("/api/blueprint", handler(async (req, res) => {
   res.json({ plan });
 }));
 
+// Ground truth is identical for every user and never changes — cache it by
+// title|artist for the life of the process instead of re-researching the same
+// song (and re-spending the web-search budget) on every arrangement request.
+const groundTruthCache = new Map();
+const groundTruthKey = (p) => `${String(p.songTitle || "").trim().toLowerCase()}|${String(p.songArtist || "").trim().toLowerCase()}`;
+
 // Fetch documented song data (key, per-section chords, structure, melody facts)
 // via web search. Returns null when nothing reliable was found or the call fails —
 // callers must treat null as "fall back to model memory".
 async function lookupGroundTruth(p) {
+  const key = groundTruthKey(p);
+  if (groundTruthCache.has(key)) {
+    console.log(`[ground-truth] cache hit for "${p.songTitle}"`);
+    return groundTruthCache.get(key);
+  }
   try {
     const text = await callAnthropic({
       prompt: buildGroundTruthPrompt(p),
       maxTokens: 3000,
       webSearch: true,
       maxSearches: 5,
+      model: RETRIEVAL_MODEL, // formatting/retrieval, not composition — no need for Opus
     });
     const gt = extractJson(text);
     if (!gt || gt.found === false) {
       console.log(`[ground-truth] no reliable data for "${p.songTitle}"`);
+      groundTruthCache.set(key, null);
       return null;
     }
     console.log(`[ground-truth] "${p.songTitle}": key=${gt.key} conf=${gt.confidence} sources=${(gt.sources || []).length}`);
+    groundTruthCache.set(key, gt);
     return gt;
   } catch (err) {
     console.warn(`[ground-truth] lookup failed for "${p.songTitle}":`, err.message);
-    return null;
+    return null; // not cached — a transient failure shouldn't poison future lookups
   }
 }
 
@@ -156,11 +187,26 @@ function cleanMelodyLine(text) {
 app.post("/api/part", handler(async (req, res) => {
   const p = req.body || {};
   if (!p.instrName) throw Object.assign(new Error("instrName is required"), { status: 400 });
-  const measures = Number(p.measures) || 8;
+  if (!isValidMeasures(p.measures)) {
+    throw Object.assign(new Error(`measures must be one of: ${ALLOWED_MEASURES.join(", ")}`), { status: 400 });
+  }
+  const measures = Number(p.measures);
   let abc = cleanAbc(await callAnthropic({
     prompt: buildPartPrompt({ ...p, measures }),
     maxTokens: tokensForMeasures(measures),
   }));
+
+  // If the model returned prose with no X: header, cleanAbc passes it through
+  // unchanged and the renderer would silently show an empty box — catch that
+  // here and return a real error instead.
+  if (!/^X:\d/.test(abc.trim())) {
+    throw Object.assign(new Error("The model did not return valid ABC notation for this part."), { status: 502 });
+  }
+  const measureCountProblem = analyzeMelody(stripAbcHeaders(abc), p.timeSignature, measures)
+    .problems.some((msg) => /must have exactly/.test(msg));
+  if (measureCountProblem) {
+    throw Object.assign(new Error(`Generated part has the wrong number of measures (expected ${measures}).`), { status: 502 });
+  }
 
   // Verify the part actually reproduces the canonical melody in the measures it
   // was assigned to carry it — bar math alone can't catch a wrong-but-well-formed
@@ -208,6 +254,12 @@ function cleanAbc(text) {
   const idx = t.indexOf("X:");
   if (idx > 0) t = t.slice(idx);
   return t;
+}
+
+// Drop ABC header lines (X:/T:/K:/…) so what's left is pure note text, ready
+// for analyzeMelody. Same filter checkPartAgainstMelody uses internally.
+function stripAbcHeaders(abc) {
+  return String(abc).split(/\r?\n/).filter((l) => l.trim() && !/^[A-Za-z]:/.test(l) && !/^%%/.test(l)).join(" ");
 }
 
 app.listen(PORT, () => {
