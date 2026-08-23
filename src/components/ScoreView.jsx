@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SERIF } from "../lib/constants.js";
 import { buildFullScoreAbc, buildLeadSheetAbc, buildScoreAbc } from "../lib/abcHelpers.js";
 import { printAbc } from "../lib/print.js";
+import { analyzeVoicing } from "../lib/voicing.js";
 import { SecH } from "./ui.jsx";
 import AbcRenderer from "./AbcRenderer.jsx";
 import AudioPlayer from "./AudioPlayer.jsx";
@@ -27,6 +28,11 @@ export default function ScoreView({
     doneCount >= Math.min(2, totalCount) && doneCount > 0
       ? buildFullScoreAbc(scoreParts, { title: songTitle, timeSig, bpm, key: songKey })
       : null;
+
+  // Cross-part orchestration checks (register crowding, unison doubling) —
+  // only meaningful once there's more than one finished part to compare.
+  // Re-derived on every render, same as fullScoreAbc.
+  const voicingWarnings = doneCount >= 2 ? analyzeVoicing(scoreParts, melodyPlan) : [];
 
   const allDisabled = anyLoading || doneCount === totalCount || planBusy;
 
@@ -173,6 +179,18 @@ export default function ScoreView({
           />
         ))}
       </div>
+
+      {voicingWarnings.length > 0 && (
+        <div style={{ marginTop: "20px", padding: "10px 12px", background: "rgba(200,160,80,0.08)", border: `1px solid ${S.gold}44`, borderRadius: "4px", fontSize: "12px", color: S.gold }}>
+          ⚠ {voicingWarnings.length} orchestration note{voicingWarnings.length > 1 ? "s" : ""} across parts (register crowding or unison doubling) — informational, not blocking.
+          <details style={{ marginTop: "4px" }}>
+            <summary style={{ cursor: "pointer", fontSize: "11px", color: S.muted }}>details</summary>
+            <ul style={{ margin: "6px 0 0", paddingLeft: "18px", color: S.muted, fontSize: "11px" }}>
+              {voicingWarnings.map((w, i) => <li key={i}>{w}</li>)}
+            </ul>
+          </details>
+        </div>
+      )}
 
       {fullScoreAbc && (
         <div style={{ marginTop: "28px" }}>

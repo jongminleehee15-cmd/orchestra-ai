@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 
-import { PORT, MODEL, ANTHROPIC_API_KEY, tokensForMeasures } from "./config.js";
+import { PORT, MODEL, RETRIEVAL_MODEL, ANTHROPIC_API_KEY, FRONTEND_ORIGIN, tokensForMeasures } from "./config.js";
 import { callAnthropic, extractJson } from "./anthropic.js";
 import {
   buildSearchPrompt, buildBlueprintPrompt, buildPartPrompt, buildMelodyCheckPrompt,
@@ -18,12 +18,21 @@ import { loadImports, getImportedWork, searchImports, ingestScore, saveImportCho
 import { checkPartMelody, partMeasures } from "./lib/partCheck.js";
 import { checkPartRange, enforceRange } from "./lib/ranges.js";
 import { CHUNK_THRESHOLD, CHUNK_SIZE, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount } from "./lib/chunking.js";
+import { ALLOWED_MEASURES, MAX_INSTRUMENTS, isValidMeasures } from "./lib/limits.js";
 
 const app = express();
 
+// Render/Vercel/etc. sit behind a reverse proxy — without this, every request
+// looks like it comes from the proxy's IP, so the per-IP rate limiter below
+// either buckets all users together or throws on the untrusted X-Forwarded-For
+// header. Must be set before the limiter is registered.
+app.set("trust proxy", 1);
+
 // Body size cap so a stranger can't post a giant payload (Phase 2 hardening).
 app.use(express.json({ limit: "64kb" }));
-app.use(cors());
+// Locked to the deployed frontend — app.use(cors()) was wide open, letting
+// anyone who found the backend URL spend the API budget from a browser.
+app.use(cors({ origin: FRONTEND_ORIGIN }));
 
 // Per-IP rate limit so deployment doesn't burn API credits to abusers.
 const limiter = rateLimit({
@@ -44,8 +53,13 @@ const handler = (fn) => (req, res) => {
   });
 };
 
+// /api/import is disabled in production (see the route below) — surfaced here
+// so the frontend can hide/disable the upload UI instead of offering a button
+// that 503s.
+const IMPORT_ENABLED = process.env.NODE_ENV !== "production";
+
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, model: MODEL, hasKey: Boolean(ANTHROPIC_API_KEY) });
+  res.json({ ok: true, model: MODEL, hasKey: Boolean(ANTHROPIC_API_KEY), importEnabled: IMPORT_ENABLED });
 });
 
 // ── Public-domain score library ──────────────────────────────────────────────
@@ -58,7 +72,16 @@ app.get("/api/library", (req, res) => {
 // Convert an uploaded score into the canonical verified representation. The
 // file is parsed, validated with the same bar-math gate as the library, and
 // persisted — from then on every arrangement of this song starts from it.
+//
+// This is the largest unguarded surface on a public deploy: it accepts a raw
+// 10mb upload and parses it (zip inflate for .mxl, MIDI parsing) before any
+// bot-check exists. Disabled in production until it's gated behind the same
+// abuse check as /api/blueprint (Turnstile) — re-enable by removing this guard
+// once that's wired up.
 app.post("/api/import", express.raw({ type: () => true, limit: "10mb" }), handler(async (req, res) => {
+  if (!IMPORT_ENABLED) {
+    throw Object.assign(new Error("Score upload is temporarily disabled."), { status: 503 });
+  }
   const filename = String(req.query.filename || "");
   if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
     throw Object.assign(new Error("empty upload"), { status: 400 });
@@ -112,6 +135,7 @@ app.post("/api/search", handler(async (req, res) => {
     maxTokens: 2000,
     webSearch: true,
     maxSearches: 3,
+    model: RETRIEVAL_MODEL,
   });
   const songs = extractJson(text);
   res.json({ songs: Array.isArray(songs) ? songs : [] });
@@ -124,7 +148,13 @@ app.post("/api/blueprint", handler(async (req, res) => {
   if (!Array.isArray(p.instruments) || p.instruments.length === 0) {
     throw Object.assign(new Error("instruments are required"), { status: 400 });
   }
-  const measures = Number(p.measures) || 8;
+  if (p.instruments.length > MAX_INSTRUMENTS) {
+    throw Object.assign(new Error(`Too many instruments (max ${MAX_INSTRUMENTS}).`), { status: 400 });
+  }
+  if (!isValidMeasures(p.measures)) {
+    throw Object.assign(new Error(`measures must be one of: ${ALLOWED_MEASURES.join(", ")}`), { status: 400 });
+  }
+  const measures = Number(p.measures);
 
   // Library path: the melody is REAL symbolic data — use it verbatim. The LLM
   // never touches the theme's own notes; no refine pass, no web lookup. But the
@@ -314,6 +344,7 @@ async function lookupGroundTruth(p) {
       maxTokens: 3000,
       webSearch: true,
       maxSearches: 5,
+      model: RETRIEVAL_MODEL,
     });
     const gt = extractJson(text);
     if (!gt || gt.found === false) {
@@ -374,7 +405,10 @@ function cleanMelodyLine(text) {
 app.post("/api/part", handler(async (req, res) => {
   const p = req.body || {};
   if (!p.instrName) throw Object.assign(new Error("instrName is required"), { status: 400 });
-  const measures = Number(p.measures) || 8;
+  if (!isValidMeasures(p.measures)) {
+    throw Object.assign(new Error(`measures must be one of: ${ALLOWED_MEASURES.join(", ")}`), { status: 400 });
+  }
+  const measures = Number(p.measures);
 
   // Long parts degrade in a single call (a 64-bar request came back with 12) —
   // above the threshold, write the part in validated ~16-measure sections.
@@ -397,28 +431,46 @@ app.post("/api/part", handler(async (req, res) => {
       ? checkPartMelody(candidate, p.melodyAbc, melodySections)
       : { problems: [] };
     const range = checkPartRange(candidate, p.instrName);
-    return { melody: melody.problems, range: range.problems, total: melody.problems.length + range.problems.length };
+    // A part that stops writing early (or runs long) is a retryable problem,
+    // not just something to silently pad/trim after the fact — mirrors the
+    // chunked path's `structure` check, which already gets this right.
+    const got = partMeasures(candidate).length;
+    const structure = got === measures
+      ? []
+      : [`you wrote ${got} measures but this part must contain EXACTLY ${measures} — ${got < measures ? "continue the piece to its actual end, don't stop early" : "you went past the end; stop exactly at the final barline"}`];
+    return {
+      melody: melody.problems, range: range.problems, structure,
+      total: melody.problems.length + range.problems.length + structure.length,
+    };
   };
 
   let issues = checkAll(abc);
   if (issues.total > 0) {
-    console.warn(`[part:${p.instrName}] checks failed (${issues.melody.length} melody, ${issues.range.length} range):\n  ${[...issues.melody, ...issues.range].join("\n  ")}`);
+    console.warn(`[part:${p.instrName}] checks failed (${issues.melody.length} melody, ${issues.range.length} range, ${issues.structure.length} structure):\n  ${[...issues.structure, ...issues.melody, ...issues.range].join("\n  ")}`);
     try {
       const fixList = [
+        ...issues.structure.map((x) => `- [structure] ${x}`),
         ...issues.melody.map((x) => `- [melody] ${x}`),
         ...issues.range.map((x) => `- [range] ${x}`),
       ].join("\n");
       const retryAbc = cleanAbc(await callAnthropic({
         prompt: `${prompt}
 
-YOUR PREVIOUS ATTEMPT HAD ERRORS, detected by automated checks against the canonical melody and the instrument's real playable range. Fix EVERY one of them while keeping the rest of your arrangement:
+YOUR PREVIOUS ATTEMPT HAD ERRORS, detected by automated checks against the canonical melody, the instrument's real playable range, and the required length. Fix EVERY one of them while keeping the rest of your arrangement:
 ${fixList}
 ${issues.range.length ? "\nRange errors are notes a real player physically cannot play — move that whole passage up or down an octave (or revoice the chord) so it fits the PLAYABLE RANGE; never just clip single notes." : ""}
+${issues.structure.length ? "\nA part shorter than the requested length will otherwise be padded with silent rests to fill it out, which sounds broken next to the other instruments — actually write real music all the way to the final barline instead." : ""}
 Output the FULL corrected ABC part again, raw ABC only.`,
         maxTokens: tokensForMeasures(measures),
       }));
       const second = checkAll(retryAbc);
-      if (second.total < issues.total) {
+      // Structure (wrong length) dominates the tie-break: a retry that fixes
+      // the length but leaves an equal-or-worse melody/range count must still
+      // win over keeping a WRONG-LENGTH original, or this whole fix is a
+      // no-op whenever the retry trades one problem type for another.
+      const better = second.structure.length < issues.structure.length
+        || (second.structure.length === issues.structure.length && second.total < issues.total);
+      if (better) {
         abc = retryAbc;
         issues = second;
       }
@@ -426,7 +478,7 @@ Output the FULL corrected ABC part again, raw ABC only.`,
       // retry failed — keep first attempt and its warnings
     }
     if (issues.total > 0) {
-      console.warn(`[part:${p.instrName}] still ${issues.melody.length} melody / ${issues.range.length} range problem(s) after repair`);
+      console.warn(`[part:${p.instrName}] still ${issues.melody.length} melody / ${issues.range.length} range / ${issues.structure.length} structure problem(s) after repair`);
     }
   }
 
@@ -448,7 +500,7 @@ Output the FULL corrected ABC part again, raw ABC only.`,
     abc = `${headerOf(abc)}\n${stitchBody(fitted.measures)}`;
     lengthNote = fitted.padded
       ? `the part stopped at measure ${got.length} — measures ${got.length + 1}-${measures} are written as rests (Regenerate for a full take)`
-      : `the part ran ${fitted.trimmed} measure(s) long — trimmed to ${measures}`;
+      : `the part ran ${fitted.trimmed} measure(s) long — measure${fitted.trimmed > 1 ? "s" : ""} ${measures + 1}-${got.length} (including the part's final bar) were deleted to fit; the ending may now cut off early relative to other parts (Regenerate for a proper ending)`;
     console.warn(`[part:${p.instrName}] length fix: ${lengthNote}`);
   }
 

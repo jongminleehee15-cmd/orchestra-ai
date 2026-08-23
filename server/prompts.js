@@ -166,6 +166,7 @@ Rules:
 - DISTINCT VOICES: when two players share an instrument (e.g. "Trumpet 1" and "Trumpet 2", "Violin 1" and "Violin 2"), give them DIFFERENT roles and DIFFERENT material — one leads or takes the melody while the other harmonizes (a 3rd or 6th below) or plays a countermelody. NEVER assign both players the identical line.
 - DEVELOP, don't restate: vary the texture from section to section, hand the melody to a different instrument at each section boundary, and add countermelody plus moving inner voices. When a section repeats, treat it differently the second time (fuller scoring, an added counterline, or re-voiced harmony) — not an identical copy.
 - Plan a dynamic arc across the whole piece (build toward a high point, then resolve) and describe it in melodySummary.
+- DYNAMIC BALANCE: whenever a section's "notes" or an instrument's "instruction" names a dynamic level (p, mp, mf, f, ff…), the melody carrier's dynamic for that passage must be AT LEAST as loud as every other instrument sounding at the same time — never write a hushed melody carrier ("!p!") alongside an accompaniment/harmony instruction implying anything louder. If a passage should be quiet overall, say so for EVERY instrument in it together, not just the melody carrier alone.
 - Return ONLY the JSON, no markdown, no explanation`;
 }
 
@@ -238,6 +239,7 @@ Rules:
 - Hand the melody between instruments at section boundaries; spread it EVENLY — low instruments and mallet percussion may carry it too, with the bass line moving elsewhere for those measures
 - DISTINCT VOICES: players sharing an instrument (e.g. "Violin 1"/"Violin 2") get different roles/material, never the identical line
 - Vary the texture from section to section and plan a dynamic arc (build to a high point, then resolve)
+- DYNAMIC BALANCE: whenever a section's "notes" or an instrument's "instruction" names a dynamic level (p, mp, mf, f, ff…), the melody carrier's dynamic for that passage must be AT LEAST as loud as every other instrument sounding at the same time — never write a hushed melody carrier ("!p!") alongside an accompaniment/harmony instruction implying anything louder. If a passage should be quiet overall, say so for EVERY instrument in it together, not just the melody carrier alone.
 - Return ONLY the JSON, no markdown, no explanation`;
 }
 
@@ -441,11 +443,11 @@ function buildRoleInstruction(instrName, role) {
   lines.push(`Primary role: ${role.primaryRole}`);
   if (role.melodySections?.length > 0) {
     lines.push(
-      `YOU carry the MAIN MELODY in: ${role.melodySections.join(", ")} — play the exact melody for those measures (transposed to your range), marked !mf! or !f!, clear and singable in the upper part of your range`,
+      `YOU carry the MAIN MELODY in: ${role.melodySections.join(", ")} — play the exact melody for those measures (transposed to your range), clear and singable in the upper part of your range. Default to marked !mf! or !f! there UNLESS the Style note below explicitly calls for something quieter (e.g. a hushed opening) — either way, your dynamic in those measures is the LOUDEST voice sounding: never mark yourself quieter than the accompaniment underneath you, even in a soft passage.`,
     );
   } else {
     lines.push(
-      "You do NOT carry the main melody here — stay out of the melody's register (below it, or above it if your instrument lives higher than the tune) and leave it clear, but keep your OWN line moving and musical (a countermelody, arpeggios, walking motion), never a static repeated figure. Staying inside your playable range ALWAYS beats staying out of the melody's way",
+      "You do NOT carry the main melody here — stay out of the melody's register (below it, or above it if your instrument lives higher than the tune) and leave it clear, but keep your OWN line moving and musical (a countermelody, arpeggios, walking motion), never a static repeated figure. Staying inside your playable range ALWAYS beats staying out of the melody's way. DYNAMICS: mark yourself AT OR BELOW the melody carrier's dynamic for these measures — never louder than the tune, even in a full/loud passage.",
     );
   }
   if (role.instruction) lines.push(`Style note: ${role.instruction}`);
