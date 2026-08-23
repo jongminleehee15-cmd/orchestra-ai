@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { searchSongs, getLibrary, importScore } from "../api/client.js";
+import { searchSongs, getLibrary, importScore, getHealth } from "../api/client.js";
 import { SERIF } from "../lib/constants.js";
 import SongCard from "./SongCard.jsx";
 
@@ -17,11 +17,20 @@ export default function SongSearchPanel({ onSelect, S }) {
   const [library, setLibrary] = useState([]);
   const [importing, setImporting] = useState(false);
   const [importErr, setImportErr] = useState(null);
+  // null = health check not back yet; render nothing rather than flashing
+  // the "disabled" message before we actually know the server's answer.
+  const [importEnabled, setImportEnabled] = useState(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
   useEffect(() => { getLibrary().then(setLibrary).catch(() => {}); }, []);
+  useEffect(() => {
+    // Fail closed: a health-check network error means we don't know the
+    // server's answer, so treat uploads as unavailable rather than showing
+    // a button that might 503.
+    getHealth().then((h) => setImportEnabled(Boolean(h?.importEnabled))).catch(() => setImportEnabled(false));
+  }, []);
 
   async function handleImport(e) {
     const file = e.target.files?.[0];
@@ -109,26 +118,32 @@ export default function SongSearchPanel({ onSelect, S }) {
         )}
       </div>
 
-      <div style={{ marginBottom: "20px", padding: "12px 16px", background: S.surface, border: `1px dashed ${S.border}`, borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-        <div style={{ fontSize: "13px", color: S.muted, lineHeight: 1.5 }}>
-          <span style={{ color: S.text }}>Have the sheet music?</span> Upload MusicXML (.musicxml, .xml, .mxl) for a
-          guaranteed-exact melody — MuseScore.com scores can be downloaded in this format. MIDI (.mid) also works
-          (e.g. from Mutopia Project) but its melody is guessed by highest-note extraction, which is reliable for
-          simple, clearly voice-led tunes and less so for dense piano/guitar textures — worth a spot-check afterward.
+      {importEnabled === null ? null : importEnabled ? (
+        <div style={{ marginBottom: "20px", padding: "12px 16px", background: S.surface, border: `1px dashed ${S.border}`, borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ fontSize: "13px", color: S.muted, lineHeight: 1.5 }}>
+            <span style={{ color: S.text }}>Have the sheet music?</span> Upload MusicXML (.musicxml, .xml, .mxl) for a
+            guaranteed-exact melody — MuseScore.com scores can be downloaded in this format. MIDI (.mid) also works
+            (e.g. from Mutopia Project) but its melody is guessed by highest-note extraction, which is reliable for
+            simple, clearly voice-led tunes and less so for dense piano/guitar textures — worth a spot-check afterward.
+          </div>
+          <input ref={fileRef} type="file" accept=".musicxml,.xml,.mxl,.mid,.midi" onChange={handleImport} style={{ display: "none" }} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={importing}
+            style={{
+              padding: "8px 16px", background: "transparent", border: `1px solid ${S.goldDim}`,
+              color: S.gold, borderRadius: "4px", cursor: importing ? "wait" : "pointer",
+              fontSize: "13px", fontFamily: SERIF, whiteSpace: "nowrap",
+            }}
+          >
+            {importing ? "⏳ Converting…" : "⬆ Upload score"}
+          </button>
         </div>
-        <input ref={fileRef} type="file" accept=".musicxml,.xml,.mxl,.mid,.midi" onChange={handleImport} style={{ display: "none" }} />
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={importing}
-          style={{
-            padding: "8px 16px", background: "transparent", border: `1px solid ${S.goldDim}`,
-            color: S.gold, borderRadius: "4px", cursor: importing ? "wait" : "pointer",
-            fontSize: "13px", fontFamily: SERIF, whiteSpace: "nowrap",
-          }}
-        >
-          {importing ? "⏳ Converting…" : "⬆ Upload score"}
-        </button>
-      </div>
+      ) : (
+        <div style={{ marginBottom: "20px", padding: "12px 16px", background: S.surface, border: `1px dashed ${S.border}`, borderRadius: "6px", fontSize: "13px", color: S.muted, lineHeight: 1.5 }}>
+          <span style={{ color: S.text }}>Score upload is temporarily unavailable</span> on this deployment — search the library above or try again later.
+        </div>
+      )}
       {importErr && (
         <div style={{ padding: "12px", background: "rgba(200,80,80,0.1)", border: "1px solid rgba(200,80,80,0.25)", borderRadius: "5px", color: "#d47878", fontSize: "13px", marginBottom: "16px" }}>
           Score import failed: {importErr}

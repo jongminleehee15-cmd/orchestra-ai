@@ -1,9 +1,16 @@
 // Frontend API client. Talks ONLY to our Express proxy (/api/*) — never to
 // api.anthropic.com directly, so the key stays server-side. Prompt construction
 // also lives on the server; the client just sends structured params.
+//
+// In dev, API_BASE is empty and Vite's proxy forwards /api/* to localhost:3001
+// same-origin. In production, VITE_API_BASE_URL points at the deployed Render
+// backend, so these become real cross-origin requests — that's required for
+// the backend's CORS allowlist (FRONTEND_ORIGIN) to actually be enforced by
+// the browser; see README "Deployment".
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 async function postJson(path, body) {
-  const resp = await fetch(path, {
+  const resp = await fetch(API_BASE + path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -26,9 +33,16 @@ export async function searchSongs(query) {
   return songs || [];
 }
 
+// → { ok, model, hasKey, importEnabled }. importEnabled is false when
+// /api/import is disabled server-side (production, pending abuse-check).
+export async function getHealth() {
+  const resp = await fetch(API_BASE + "/api/health");
+  return resp.json();
+}
+
 // → array of public-domain library songs (exact score data, no LLM involved)
 export async function getLibrary() {
-  const resp = await fetch("/api/library");
+  const resp = await fetch(API_BASE + "/api/library");
   const data = await resp.json().catch(() => null);
   if (!resp.ok) throw new Error(data?.error || `Request failed (${resp.status})`);
   return data?.songs || [];
@@ -37,7 +51,7 @@ export async function getLibrary() {
 // Upload a MusicXML/MIDI score file; the server converts it once into its
 // canonical verified melody form. → song object (source: "import")
 export async function importScore(file) {
-  const resp = await fetch(`/api/import?filename=${encodeURIComponent(file.name)}`, {
+  const resp = await fetch(`${API_BASE}/api/import?filename=${encodeURIComponent(file.name)}`, {
     method: "POST",
     headers: { "Content-Type": "application/octet-stream" },
     body: file,

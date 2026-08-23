@@ -24,6 +24,9 @@ export const ENSEMBLE_PRESETS = [
 export const STYLES      = ["Original", "Cinematic", "Romantic", "Baroque", "Jazz", "Minimalist", "Epic", "Playful", "Mysterious", "Impressionist"];
 export const DENSITIES   = ["Sparse", "Moderate", "Full", "Lush"];
 export const TEMPOS_FEEL  = ["Slow", "Moderate", "Upbeat", "Fast"];
+// Keep in sync with server/lib/limits.js ALLOWED_MEASURES — the server 400s
+// any value not in that list, so an out-of-sync UI could offer a value the
+// API rejects.
 export const MEASURE_OPTIONS = [4, 8, 12, 16, 24, 32, 48, 64, 96, 128];
 
 // Rough playing time from measures + time signature + tempo. bpm is the

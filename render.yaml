@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: orchestra-ai-backend
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      # Set in the Render dashboard, not here — never commit a real key.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: MODEL
+        value: claude-opus-4-8
+      - key: RETRIEVAL_MODEL
+        value: claude-sonnet-5
+      # Your deployed Vercel URL (e.g. https://your-app.vercel.app) — CORS
+      # rejects every browser request that doesn't match this. Set once the
+      # Vercel deploy exists; see README.md "Deployment".
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: NODE_ENV
+        value: production
+      # PORT is set automatically by Render — do not add it here.
