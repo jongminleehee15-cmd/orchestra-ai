@@ -21,3 +21,6 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# local Claude Code settings — machine-specific paths, not shared config
+.claude/settings.local.json
