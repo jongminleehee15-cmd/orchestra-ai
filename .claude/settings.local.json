@@ -57,7 +57,21 @@
       "Bash(powershell -Command \"Get-Process -Id 29552 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,Path\" 2>&1)",
       "Bash(npx vite *)",
       "Bash(grep -o \"<time-modification>.\\\\{0,150\\\\}\" _test_berceuse.musicxml)",
-      "Bash(powershell -Command \"Get-Process -Id 14080 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName\")"
+      "Bash(powershell -Command \"Get-Process -Id 14080 -ErrorAction SilentlyContinue | Select-Object Id,ProcessName\")",
+      "Bash(git fetch *)",
+      "Bash(git merge-tree *)",
+      "Bash(kill 1110)",
+      "Bash(npm ls *)",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(disown)",
+      "Bash(echo \"launched, PID group: $!\")",
+      "Bash(break)",
+      "Bash(netstat -ano)",
+      "Bash(powershell -Command \"Stop-Process -Id 27720 -Force\")",
+      "Bash(rm -f /tmp/app-dev.log)",
+      "Bash(powershell -Command \"Stop-Process -Id 28832 -Force\")",
+      "Bash(pip3 list *)",
+      "Bash(npx --yes js-yaml render.yaml)"
     ]
   }
 }
