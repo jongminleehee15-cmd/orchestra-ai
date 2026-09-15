@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { S, SERIF, genreColor } from "./lib/constants.js";
 import { generateBlueprint, generateInstrumentABC } from "./api/client.js";
+import { getHistory, newHistoryId, saveArrangement, deleteArrangement, clearAllArrangements } from "./lib/history.js";
 import SongSearchPanel from "./components/SongSearchPanel.jsx";
 import OrchestraBuilder from "./components/OrchestraBuilder.jsx";
 import ParamsPanel from "./components/ParamsPanel.jsx";
 import ScoreView from "./components/ScoreView.jsx";
+import HistoryPanel from "./components/HistoryPanel.jsx";
 
 // Expand [{name, count}] into distinct numbered voices so duplicate instruments
 // (e.g. 2 Trumpets) each get an independent part — Trumpet 1, Trumpet 2 — instead
@@ -50,6 +52,29 @@ export default function App() {
   const [showScore, setShowScore] = useState(false);
   const [viewIdx, setViewIdx] = useState(0);
 
+  // History (client-side only, last 5 arrangements — see src/lib/history.js)
+  const [history, setHistory] = useState(() => getHistory());
+  const [currentHistoryId, setCurrentHistoryId] = useState(null);
+
+  // Snapshot the active arrangement into history whenever its generated
+  // content changes, so reopening it later shows finished parts, not a blank
+  // slate needing regeneration. currentHistoryId is set once per arrangement
+  // (in initScore, or when restoring a past one), so repeated saves here
+  // update the same entry rather than creating a new one per part.
+  useEffect(() => {
+    if (!currentHistoryId) return;
+    setHistory(saveArrangement({
+      id: currentHistoryId,
+      savedAt: Date.now(),
+      songTitle, songArtist, songGenre, songNotes,
+      key, timeSig, bpm, measures,
+      selectedSong, selectedInstrs,
+      style, density, tempoFeel,
+      scoreParts, melodyPlan, planStatus,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentHistoryId, scoreParts, melodyPlan, planStatus]);
+
   function handleSongSelect(song) {
     setSongTitle(song.title);
     setSongArtist(song.artist);
@@ -73,6 +98,7 @@ export default function App() {
     setError(null);
     setMelodyPlan(null);
     setPlanStatus("loading");
+    setCurrentHistoryId(newHistoryId());
     const voices = expandVoices(selectedInstrs);
     setScoreParts(voices.map((v) => ({ instrName: v.name, baseName: v.base, status: "idle", abcText: null, errMsg: null })));
     setViewIdx(0);
@@ -150,7 +176,48 @@ export default function App() {
     setShowScore(false);
     setMelodyPlan(null);
     setPlanStatus("idle");
+    setCurrentHistoryId(null);
     setTab("song");
+  }
+
+  // Bring a past arrangement back exactly as it was, including whichever
+  // parts had already finished generating — no regeneration needed. Further
+  // edits (e.g. regenerating one part) continue updating this same history
+  // entry, since currentHistoryId carries over.
+  function restoreFromHistory(entry) {
+    setSongTitle(entry.songTitle || "");
+    setSongArtist(entry.songArtist || "");
+    setSongGenre(entry.songGenre || "");
+    setSongNotes(entry.songNotes || "");
+    setKey(entry.key || "C");
+    setTimeSig(entry.timeSig || "4/4");
+    setBpm(entry.bpm || 100);
+    setMeasures(entry.measures || 8);
+    setSelectedSong(entry.selectedSong || null);
+    setSelectedInstrs(entry.selectedInstrs || []);
+    setStyle(entry.style || "Cinematic");
+    setDensity(entry.density || "Full");
+    setTempoFeel(entry.tempoFeel || "Moderate");
+    setScoreParts(entry.scoreParts || []);
+    setMelodyPlan(entry.melodyPlan || null);
+    // Never restore into "loading" — if the snapshot was taken mid-fetch,
+    // there's no request in flight anymore to resolve it, which would leave
+    // the UI stuck on a spinner with no retry control. Derive from whether a
+    // plan actually landed instead.
+    setPlanStatus(entry.melodyPlan ? "done" : "error");
+    setShowScore(true);
+    setViewIdx(0);
+    setError(null);
+    setCurrentHistoryId(entry.id);
+    setTab("score");
+  }
+
+  function deleteHistoryItem(id) {
+    setHistory(deleteArrangement(id));
+  }
+
+  function clearHistory() {
+    setHistory(clearAllArrangements());
   }
 
   const doneCount = scoreParts.filter((p) => p.status === "done").length;
@@ -202,6 +269,7 @@ export default function App() {
           <TabBtn id="orchestra" label="Orchestra" icon="𝄞" disabled={!selectedSong} />
           <TabBtn id="params" label="Parameters" icon="⚙" disabled={!selectedSong} />
           {showScore && <TabBtn id="score" label="Score" icon="📄" badge={`${doneCount}/${totalCount}`} />}
+          <TabBtn id="history" label="History" icon="🕐" badge={history.length ? String(history.length) : null} />
         </div>
 
         {tab === "song" && (
@@ -260,6 +328,16 @@ export default function App() {
             onApplyMelody={applyMelodyEdit}
             onRetryPlan={initScore}
             onReset={resetArrangement}
+          />
+        )}
+
+        {tab === "history" && (
+          <HistoryPanel
+            S={S}
+            history={history}
+            onRestore={restoreFromHistory}
+            onDelete={deleteHistoryItem}
+            onClearAll={clearHistory}
           />
         )}
       </main>
