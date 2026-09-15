@@ -246,6 +246,57 @@ model calls would need durations lined up on a shared clock, which the ABC
 here doesn't carry). Treat it as "these two are worth listening to
 together," not a hard collision proof.
 
+## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
+
+A runtime-fetched corpus, same verbatim-melody contract as the library and
+the music21/OpenScore corpora: ~300 public-domain hymns from the (now
+apparently defunct) Open Hymnal Project, mirrored at
+`github.com/mzealey/openhymnal`. Wired into `/api/search` (tried after
+music21/OpenScore, before the LLM) and `/api/blueprint`'s `corpusId` branch.
+
+**Why this needed its own parser, unlike the MusicXML corpora:** these files
+are a different ABC dialect from the hand-curated library's — multi-voice
+(`V:`/`%%staves`), `L:1/4` (not `L:1/8`), abcm2ps-flavored. The melody voice
+is extracted as "whichever voice is declared first" (standard SATB
+engraving — soprano on top), rescaled into the pipeline's canonical `L:1/8`
+form via the same `eventsToMeasures()` engine `musicxml.js`/`midi.js` use.
+Chords are not extracted from the source's real 4-part harmony in v1 —
+harmonized once via the LLM and cached, same as every other corpus. Full
+SATB extraction would be a real accuracy upgrade if revisited later.
+
+**License gate — this is the one judgment call worth a musician/maintainer's
+attention.** Unlike a single-license corpus, this project's own README
+allows "public domain OR freely distributable" works — not uniformly
+commercial-safe. Every file is checked for a `C: copyright: ...` line
+containing "public domain"; anything else is silently skipped. Verified
+against a ~50-file spread sample: 98% converts and passes (measured after
+fixing two parser bugs found in that same pass — see below), with the one
+rejection being a **known false negative**: a file that splits "Words:
+Copyright ... All rights reserved" and "Music and Setting: public domain"
+across separate `C:` lines. The gate only reads the first matching line, so
+it conservatively rejects a hymn whose music is genuinely PD. Left as-is —
+erring toward discarding a usable hymn is the safe direction, and it's a
+small fraction of the collection.
+
+**Two real parsing bugs found and fixed during integration** (both caught by
+the bar-math validation gate every source goes through, exactly as designed):
+1. The length-suffix regex didn't handle ABC's `/4` shorthand (a slash
+   directly followed by digits, implied numerator 1) — `/4` was silently
+   mis-split into `/` (parsed as 0.5) with the `4` dropped, corrupting
+   duration math on any hymn using explicit dotted-rhythm fractions (found
+   via two real files with 8.5/9-unit bars instead of 8).
+2. Tuplet detection (`"(3"`) was checked on text that had already had its
+   slur parens stripped, so the `(` was gone before the check ever ran —
+   moved the check to run on the raw measure text first.
+
+**Reliability caveat, not yet acted on:** the original openhymnal.org site's
+TLS cert is broken (resolves to an unrelated domain) — the project looks
+abandoned. The GitHub mirror this integration points at (`mzealey/openhymnal`)
+is one person's personal fork, last touched in 2017, not an institutional
+home like `cuthbertLab/music21`. **Fork it to a repo you control** and update
+the `REPO` constant in `openhymnal.js` before treating this as a permanent
+dependency — a stranger's dormant account is a weak foundation.
+
 ## Non-library songs
 
 Anything not in the library still uses the previous pipeline: web-search

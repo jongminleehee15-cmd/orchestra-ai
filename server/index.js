@@ -13,6 +13,7 @@ import { analyzeMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
 import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
 import { searchCorpus, getCorpusWork } from "./lib/corpus.js";
 import { searchOpenScore, getOpenScoreWork } from "./lib/openscore.js";
+import { searchOpenHymnal, getOpenHymnalWork } from "./lib/openhymnal.js";
 import { tonicChord } from "./lib/symbolic.js";
 import { loadImports, getImportedWork, searchImports, ingestScore, saveImportChords, importToSong } from "./lib/imports.js";
 import { checkPartMelody, partMeasures } from "./lib/partCheck.js";
@@ -129,6 +130,16 @@ app.post("/api/search", handler(async (req, res) => {
   } catch (err) {
     console.warn(`[search] OpenScore lookup failed: ${err.message}`);
   }
+  try {
+    const hymnalHits = await searchOpenHymnal(query);
+    if (hymnalHits.length > 0) {
+      console.log(`[search] "${query}": ${hymnalHits.length} validated hymn(s) from the Open Hymnal Project`);
+      res.json({ songs: hymnalHits });
+      return;
+    }
+  } catch (err) {
+    console.warn(`[search] Open Hymnal lookup failed: ${err.message}`);
+  }
 
   const text = await callAnthropic({
     prompt: buildSearchPrompt(query),
@@ -181,14 +192,14 @@ app.post("/api/blueprint", handler(async (req, res) => {
   // was fetched, converted, and validated at search time; here we (re)use the
   // cached work, harmonize it once (engraved parts carry no chord symbols),
   // and run the identical orchestration-only pipeline. Path prefixes from the
-  // two corpora never collide (music21/corpus/... vs scores/...), so trying
-  // both is unambiguous.
+  // three corpora never collide (music21/corpus/... vs scores/... vs
+  // Complete/...), so trying all three is unambiguous.
   if (p.corpusId) {
-    const work = (await getCorpusWork(p.corpusId)) || (await getOpenScoreWork(p.corpusId));
+    const work = (await getCorpusWork(p.corpusId)) || (await getOpenScoreWork(p.corpusId)) || (await getOpenHymnalWork(p.corpusId));
     if (!work) throw Object.assign(new Error(`unknown or unusable corpus score: ${p.corpusId}`), { status: 404 });
     if (!work.chords) work.chords = await harmonizeWork(work);
     const plan = await planFromWork(work, measures, p);
-    plan.source = "corpus";
+    plan.source = work.sourceType; // "corpus" (music21/OpenScore) or "hymnal" (Open Hymnal) — see ScoreView's honesty labeling
     plan.corpusId = work.corpusId;
     plan.sourceUrl = work.sourceUrl;
     res.json({ plan });

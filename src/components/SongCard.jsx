@@ -60,6 +60,14 @@ export default function SongCard({ song, onSelect, S }) {
               ✓ MusicXML score
             </span>
           )}
+          {song.source === "hymnal" && (
+            <span
+              title="Melody converted note-for-note from a public-domain hymn score (Open Hymnal Project) and validated — not reconstructed by AI"
+              style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a7a9a22", color: "#7fb4d4", border: "1px solid #4a7a9a55" }}
+            >
+              ✓ Verified hymn score
+            </span>
+          )}
           {!song.source && (
             <span
               title="No score data was found for this song — the melody will be reconstructed by AI from memory and may differ from the original. You can correct it afterwards in the melody editor."
