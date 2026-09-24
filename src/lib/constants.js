@@ -100,10 +100,19 @@ export function genreColor(genre = "") {
 }
 
 // ── Design system tokens ──────────────────────────────────────────────────────
+// Deep indigo "concert hall" base with a spotlight-gold accent, swapped from
+// the earlier brown/parchment palette. See project memory
+// project_ui_design_system_deliberate.md for why this is a deliberate choice.
 export const S = {
-  bg: "#0d0b08", surface: "#181410", surface2: "#201c14",
-  border: "#2c2418", gold: "#c8a050", goldDim: "#7a6030",
-  text: "#ece0c8", muted: "#9a8868",
+  bg: "#0f0d1c", surface: "#1a1730", surface2: "#221e3d",
+  border: "#332e54", gold: "#c8a050", goldDim: "#7a6030",
+  text: "#ece6f5", muted: "#8f89ab",
 };
 
-export const SERIF = "'Palatino Linotype',Palatino,serif";
+// Body copy: Libre Baskerville, loaded via Google Fonts in index.html (the
+// old Palatino Linotype is Windows/Mac-only with no web-font fallback, so it
+// rendered inconsistently cross-platform). Old Palatino kept as a fallback.
+export const SERIF = "'Libre Baskerville','Palatino Linotype',Palatino,serif";
+// Display serif for the wordmark and section headings — distinct from body
+// copy, editorial pairing (Cormorant Garamond + Libre Baskerville).
+export const DISPLAY = "'Cormorant Garamond',Georgia,serif";

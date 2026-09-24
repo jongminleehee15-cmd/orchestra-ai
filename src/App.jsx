@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { S, SERIF, genreColor } from "./lib/constants.js";
+import { S, SERIF, DISPLAY, genreColor } from "./lib/constants.js";
 import { generateBlueprint, generateInstrumentABC } from "./api/client.js";
 import { getHistory, newHistoryId, saveArrangement, deleteArrangement, clearAllArrangements } from "./lib/history.js";
 import SongSearchPanel from "./components/SongSearchPanel.jsx";
@@ -245,17 +245,17 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: S.bg, color: S.text, fontFamily: SERIF }}>
       <div style={{ position: "fixed", inset: 0, backgroundImage: "radial-gradient(ellipse at 15% 15%,rgba(200,160,80,0.05) 0%,transparent 55%),radial-gradient(ellipse at 85% 85%,rgba(90,159,212,0.03) 0%,transparent 55%)", pointerEvents: "none", zIndex: 0 }} />
 
-      <header style={{ borderBottom: `1px solid ${S.border}`, padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(13,11,8,0.97)", backdropFilter: "blur(10px)", position: "sticky", top: 0, zIndex: 50 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-          <span style={{ fontSize: "24px", fontWeight: 400, color: S.gold, letterSpacing: "0.15em" }}>ORCHESTRA</span>
-          <span style={{ fontSize: "24px", fontWeight: 700, color: S.text }}>AI</span>
+      <header style={{ borderBottom: `1px solid ${S.border}`, padding: "18px 32px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(15,13,28,0.97)", backdropFilter: "blur(10px)", position: "sticky", top: 0, zIndex: 50 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "10px", fontFamily: DISPLAY }}>
+          <span style={{ fontSize: "27px", fontWeight: 500, color: S.gold, letterSpacing: "0.15em" }}>ORCHESTRA</span>
+          <span style={{ fontSize: "27px", fontWeight: 700, color: S.text }}>AI</span>
           <span style={{ fontSize: "11px", letterSpacing: "0.18em", color: S.muted, marginLeft: "6px", textTransform: "uppercase" }}>Sheet Music Generator</span>
         </div>
         {selectedSong && (
           <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "6px 14px", background: S.surface2, border: `1px solid ${S.border}`, borderRadius: "20px" }}>
             <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: S.gold }} />
             <span style={{ fontSize: "13px", color: S.text }}>{selectedSong.title}</span>
-            <span style={{ fontSize: "12px", color: S.muted }}>— {selectedSong.artist}</span>
+            <span style={{ fontSize: "12px", color: S.muted }}>· {selectedSong.artist}</span>
             <button onClick={clearSong} style={{ background: "none", border: "none", color: S.muted, cursor: "pointer", fontSize: "14px", padding: "0 0 0 4px" }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#d07070")}
               onMouseLeave={(e) => (e.currentTarget.style.color = S.muted)}>✕</button>
@@ -275,7 +275,7 @@ export default function App() {
         {tab === "song" && (
           <div>
             <div style={{ marginBottom: "24px" }}>
-              <h2 style={{ margin: "0 0 6px", fontSize: "22px", fontWeight: 300, color: S.gold }}>Find Your Song</h2>
+              <h2 style={{ margin: "0 0 6px", fontSize: "26px", fontWeight: 500, color: S.gold, fontFamily: DISPLAY }}>Find Your Song</h2>
               <p style={{ margin: 0, fontSize: "14px", color: S.muted }}>Search any song and we'll look up its key, tempo, and time signature automatically.</p>
             </div>
             <SongSearchPanel onSelect={handleSongSelect} S={S} />

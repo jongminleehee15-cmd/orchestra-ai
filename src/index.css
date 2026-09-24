@@ -14,9 +14,9 @@ body,
 }
 
 body {
-  background: #0d0b08;
-  color: #ece0c8;
-  font-family: "Palatino Linotype", Palatino, serif;
+  background: #0f0d1c;
+  color: #ece6f5;
+  font-family: "Libre Baskerville", "Palatino Linotype", Palatino, serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -40,8 +40,8 @@ body {
 }
 
 select option {
-  background: #201c14;
-  color: #ece0c8;
+  background: #221e3d;
+  color: #ece6f5;
 }
 
 ::-webkit-scrollbar {
@@ -49,10 +49,10 @@ select option {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #181410;
+  background: #1a1730;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2c2418;
+  background: #332e54;
   border-radius: 3px;
 }
 

@@ -130,7 +130,7 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
     console.warn("playback:", e);
     halt();
     const msg = String(e?.message || e) || "Playback failed";
-    setErrMsg(/load|fetch|network/i.test(msg) ? "Couldn't load instrument sounds — check your connection" : msg);
+    setErrMsg(/load|fetch|network/i.test(msg) ? "Couldn't load instrument sounds. Check your connection." : msg);
     setStatus("error");
   };
 
@@ -249,7 +249,7 @@ export default function AudioPlayer({ abcText, S, program = 0, midiTranspose = 0
         </button>
       )}
       {status === "error" ? (
-        <span style={{ flex: 1, fontSize: "12px", color: "#d47878" }}>⚠ {errMsg} — press ▶ to retry</span>
+        <span style={{ flex: 1, fontSize: "12px", color: "#d47878" }}>⚠ {errMsg} (press ▶ to retry)</span>
       ) : (
         <>
           {/* Tall click strip around the thin bar so seeking is easy to hit. */}

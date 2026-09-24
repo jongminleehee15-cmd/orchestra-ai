@@ -66,7 +66,7 @@ export default function ParamsPanel({
           )}
         </div>
         <p style={{ margin: "8px 0 0", fontSize: "12px", color: S.muted }}>
-          Quarter notes per minute — the score's Q: marking and audio playback both use exactly this.
+          Quarter notes per minute. Sets both the score's Q: marking and the audio playback tempo.
         </p>
       </div>
 

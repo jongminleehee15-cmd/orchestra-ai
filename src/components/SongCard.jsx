@@ -31,7 +31,7 @@ export default function SongCard({ song, onSelect, S }) {
           <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: gc + "22", color: gc, border: `1px solid ${gc}44` }}>{song.genre}</span>
           {song.source === "library" && (
             <span
-              title="Melody comes verbatim from a real public-domain score — never reconstructed by AI"
+              title="Melody comes verbatim from a real public-domain score. Never reconstructed by AI."
               style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a8a5a22", color: "#7fc491", border: "1px solid #4a8a5a55" }}
             >
               ✓ Exact score
@@ -39,14 +39,14 @@ export default function SongCard({ song, onSelect, S }) {
           )}
           {song.source === "import" && song.format === "midi" ? (
             <span
-              title="Melody guessed from your uploaded MIDI by highest-note extraction — reliable for simple, clearly voice-led tunes, but can mistake accompaniment or arpeggios for the melody in denser pieces. Spot-check it in the melody editor before trusting."
+              title="Melody guessed from your uploaded MIDI by highest-note extraction. Reliable for simple, clearly voice-led tunes, but can mistake accompaniment or arpeggios for the melody in denser pieces. Spot-check it in the melody editor before trusting."
               style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#a8842a22", color: "#c8a050", border: "1px solid #a8842a55" }}
             >
-              ♪ MIDI-derived — verify
+              ♪ MIDI-derived (verify)
             </span>
           ) : song.source === "import" && (
             <span
-              title="Melody taken note-for-note from your uploaded MusicXML score — never reconstructed by AI"
+              title="Melody taken note-for-note from your uploaded MusicXML score. Never reconstructed by AI."
               style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a8a5a22", color: "#7fc491", border: "1px solid #4a8a5a55" }}
             >
               ✓ Imported score
@@ -54,7 +54,7 @@ export default function SongCard({ song, onSelect, S }) {
           )}
           {song.source === "corpus" && (
             <span
-              title="Melody converted note-for-note from an engraved public-domain MusicXML score and validated — not reconstructed by AI"
+              title="Melody converted note-for-note from an engraved public-domain MusicXML score and validated. Not reconstructed by AI."
               style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a7a9a22", color: "#7fb4d4", border: "1px solid #4a7a9a55" }}
             >
               ✓ MusicXML score
@@ -62,7 +62,7 @@ export default function SongCard({ song, onSelect, S }) {
           )}
           {song.source === "hymnal" && (
             <span
-              title="Melody converted note-for-note from a public-domain hymn score (Open Hymnal Project) and validated — not reconstructed by AI"
+              title="Melody converted note-for-note from a public-domain hymn score (Open Hymnal Project) and validated. Not reconstructed by AI."
               style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#4a7a9a22", color: "#7fb4d4", border: "1px solid #4a7a9a55" }}
             >
               ✓ Verified hymn score
@@ -70,7 +70,7 @@ export default function SongCard({ song, onSelect, S }) {
           )}
           {!song.source && (
             <span
-              title="No score data was found for this song — the melody will be reconstructed by AI from memory and may differ from the original. You can correct it afterwards in the melody editor."
+              title="No score data was found for this song. The melody will be reconstructed by AI from memory and may differ from the original. You can correct it afterwards in the melody editor."
               style={{ display: "inline-block", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", letterSpacing: "0.04em", background: "#a8842a22", color: "#c8a050", border: "1px solid #a8842a55" }}
             >
               ≈ AI-recalled melody

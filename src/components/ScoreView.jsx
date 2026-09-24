@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SERIF } from "../lib/constants.js";
+import { SERIF, DISPLAY } from "../lib/constants.js";
 import { buildFullScoreAbc, buildLeadSheetAbc, buildScoreAbc } from "../lib/abcHelpers.js";
 import { printAbc } from "../lib/print.js";
 import { analyzeVoicing } from "../lib/voicing.js";
@@ -44,7 +44,7 @@ export default function ScoreView({
     a.click();
   }
 
-  const songLabel = `${songTitle}${songArtist ? ` — ${songArtist}` : ""}`;
+  const songLabel = `${songTitle}${songArtist ? ` · ${songArtist}` : ""}`;
 
   // One print job: lead-sheet melody first, then every finished part, each on
   // its own page — the stack you'd hand out at a rehearsal.
@@ -62,8 +62,8 @@ export default function ScoreView({
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 400, color: S.gold }}>
-            {songTitle}{songArtist ? ` — ${songArtist}` : ""}
+          <h2 style={{ margin: 0, fontSize: "26px", fontWeight: 500, color: S.gold, fontFamily: DISPLAY }}>
+            {songTitle}{songArtist ? ` · ${songArtist}` : ""}
           </h2>
           <p style={{ margin: "4px 0 0", fontSize: "13px", color: S.muted }}>
             Key of {songKey} · {timeSig} · {bpm} BPM · {style} · {measures} measures
@@ -105,7 +105,7 @@ export default function ScoreView({
       )}
       {planStatus === "error" && (
         <div style={{ padding: "12px 16px", marginBottom: "16px", background: "rgba(200,80,80,0.08)", border: "1px solid rgba(200,80,80,0.2)", borderRadius: "6px", color: "#d47878", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-          <span>⚠ Couldn't build the shared melody plan — parts will still generate, but each as an independent voice.</span>
+          <span>⚠ Couldn't build the shared melody plan. Parts will still generate, but each as an independent voice.</span>
           <button onClick={onRetryPlan} style={{ padding: "5px 12px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF, whiteSpace: "nowrap" }}>
             ↻ Retry plan
           </button>
@@ -116,7 +116,7 @@ export default function ScoreView({
         <div style={{ marginBottom: "20px" }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <SecH>
-              Canonical Melody <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>— shared reference for every part</span>
+              Canonical Melody <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>(shared reference for every part)</span>
             </SecH>
             {!editing && melodyPlan?.melodyAbc && (
               <button onClick={() => setEditing(true)} style={{ padding: "5px 12px", background: "transparent", border: `1px solid ${S.goldDim}`, color: S.gold, borderRadius: "3px", cursor: "pointer", fontSize: "12px", fontFamily: SERIF, whiteSpace: "nowrap" }}>
@@ -129,16 +129,16 @@ export default function ScoreView({
             ["library", "corpus", "hymnal", "import"].includes(melodyPlan.source) ? (
               <p style={{ margin: "2px 2px 8px", fontSize: "12px", color: "#7fc491", lineHeight: 1.5 }}>
                 ✓ {melodyPlan.source === "library"
-                  ? "Verified melody — taken note-for-note from public-domain score data."
+                  ? "Verified melody: taken note-for-note from public-domain score data."
                   : melodyPlan.source === "import"
-                    ? "Verified melody — taken note-for-note from your imported score file."
+                    ? "Verified melody: taken note-for-note from your imported score file."
                     : melodyPlan.source === "hymnal"
-                      ? "Verified melody — converted note-for-note from a public-domain hymn score."
-                      : "Verified melody — converted note-for-note from an engraved public-domain MusicXML score."}
+                      ? "Verified melody: converted note-for-note from a public-domain hymn score."
+                      : "Verified melody: converted note-for-note from an engraved public-domain MusicXML score."}
               </p>
             ) : (
               <p style={{ margin: "2px 2px 8px", fontSize: "12px", color: "#c8a050", lineHeight: 1.5 }}>
-                ≈ AI-recalled melody — no score data was available, so this tune is reconstructed from the model's memory and may differ from the original. Use ✎ Edit melody to correct anything that sounds off.
+                ≈ AI-recalled melody: no score data was available, so this tune is reconstructed from the model's memory and may differ from the original. Use ✎ Edit melody to correct anything that sounds off.
               </p>
             )
           )}
@@ -184,7 +184,7 @@ export default function ScoreView({
 
       {voicingWarnings.length > 0 && (
         <div style={{ marginTop: "20px", padding: "10px 12px", background: "rgba(200,160,80,0.08)", border: `1px solid ${S.gold}44`, borderRadius: "4px", fontSize: "12px", color: S.gold }}>
-          ⚠ {voicingWarnings.length} orchestration note{voicingWarnings.length > 1 ? "s" : ""} across parts (register crowding or unison doubling) — informational, not blocking.
+          ⚠ {voicingWarnings.length} orchestration note{voicingWarnings.length > 1 ? "s" : ""} across parts (register crowding or unison doubling). Informational, not blocking.
           <details style={{ marginTop: "4px" }}>
             <summary style={{ cursor: "pointer", fontSize: "11px", color: S.muted }}>details</summary>
             <ul style={{ margin: "6px 0 0", paddingLeft: "18px", color: S.muted, fontSize: "11px" }}>
@@ -198,7 +198,7 @@ export default function ScoreView({
         <div style={{ marginTop: "28px" }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
             <SecH>
-              Full Score <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>— {doneCount < totalCount ? `${doneCount} of ${totalCount} parts so far` : "all parts"}, stacked and playing together</span>
+              Full Score <span style={{ fontSize: "12px", color: S.muted, fontWeight: 400 }}>({doneCount < totalCount ? `${doneCount} of ${totalCount} parts so far` : "all parts"}, stacked and playing together)</span>
             </SecH>
             <button
               onClick={() => printAbc({ abc: fullScoreAbc, subtitle: songLabel }, `${songLabel} · Full Score`)}

@@ -1,4 +1,4 @@
-import { S, SERIF } from "../lib/constants.js";
+import { S, SERIF, DISPLAY } from "../lib/constants.js";
 
 // Shared inline-style input base.
 export const inputStyle = {
@@ -10,7 +10,7 @@ export const inputStyle = {
 // Section heading.
 export function SecH({ children }) {
   return (
-    <h3 style={{ margin: "0 0 14px", fontFamily: SERIF, fontSize: "16px", fontWeight: 400, color: S.gold, letterSpacing: "0.08em", borderBottom: `1px solid ${S.border}`, paddingBottom: "8px" }}>
+    <h3 style={{ margin: "0 0 14px", fontFamily: DISPLAY, fontSize: "19px", fontWeight: 500, color: S.gold, letterSpacing: "0.06em", borderBottom: `1px solid ${S.border}`, paddingBottom: "8px" }}>
       {children}
     </h3>
   );

@@ -182,7 +182,7 @@ export default function VisualMelodyEditor({ S, melodyAbc, songKey, timeSig, bpm
   return (
     <div style={{ marginTop: "10px" }}>
       <p style={{ margin: "0 0 10px", fontSize: "12px", color: S.muted, lineHeight: 1.6 }}>
-        <strong style={{ color: S.text }}>Click a note</strong> to select it, then use the buttons below — or <strong style={{ color: S.text }}>drag a note up/down</strong> to change its pitch. No ABC needed.
+        <strong style={{ color: S.text }}>Click a note</strong> to select it, then use the buttons below, or <strong style={{ color: S.text }}>drag a note up/down</strong> to change its pitch. No ABC needed.
       </p>
 
       {/* Toolbar */}

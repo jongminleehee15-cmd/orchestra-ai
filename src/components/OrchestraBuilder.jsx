@@ -33,7 +33,7 @@ export default function OrchestraBuilder({
           <div style={{ width: "3px", height: "48px", background: genreColor(selectedSong.genre), borderRadius: "2px", flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: "16px", fontWeight: 700, color: S.text }}>
-              {selectedSong.title} <span style={{ fontWeight: 400, color: S.muted, fontSize: "14px" }}>— {selectedSong.artist}</span>
+              {selectedSong.title} <span style={{ fontWeight: 400, color: S.muted, fontSize: "14px" }}>· {selectedSong.artist}</span>
             </div>
             <div style={{ fontSize: "12px", color: S.muted, marginTop: "3px" }}>
               {selectedSong.genre} · Key of {songKey} · {timeSig} · {bpm} BPM
@@ -116,7 +116,7 @@ export default function OrchestraBuilder({
           ) : (
             <>
               <div style={{ fontSize: "11px", color: S.muted, marginBottom: "6px", lineHeight: 1.4 }}>
-                Enter how many <em>distinct</em> written lines each instrument needs — not how many players you have.
+                Enter how many <em>distinct</em> written lines each instrument needs, not how many players you have.
                 8 violinists reading the same 2 lines is still 2 (players double up on a part; they don't each get their own).
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "5px", maxHeight: "280px", overflowY: "auto" }}>

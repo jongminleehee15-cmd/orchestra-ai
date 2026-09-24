@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SERIF } from "../lib/constants.js";
+import { SERIF, DISPLAY } from "../lib/constants.js";
 import { timeAgo } from "../lib/history.js";
 
 function HistoryCard({ entry, onRestore, onDelete, S }) {
@@ -22,7 +22,7 @@ function HistoryCard({ entry, onRestore, onDelete, S }) {
     >
       <div style={{ minWidth: 0 }}>
         <h3 style={{ margin: "0 0 3px", fontSize: "15px", fontWeight: 700, color: hovered ? S.gold : S.text, fontFamily: SERIF, transition: "color 0.2s" }}>
-          {entry.songTitle || "Untitled"}{entry.songArtist ? ` — ${entry.songArtist}` : ""}
+          {entry.songTitle || "Untitled"}{entry.songArtist ? ` · ${entry.songArtist}` : ""}
         </h3>
         <p style={{ margin: 0, fontSize: "12px", color: S.muted }}>
           {instrLabel} · {doneCount}/{totalCount} generated · {entry.measures} measures · {entry.style} · {timeAgo(entry.savedAt)}
@@ -49,7 +49,7 @@ export default function HistoryPanel({ S, history, onRestore, onDelete, onClearA
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
         <div>
-          <h2 style={{ margin: "0 0 6px", fontSize: "22px", fontWeight: 300, color: S.gold }}>Recent Arrangements</h2>
+          <h2 style={{ margin: "0 0 6px", fontSize: "26px", fontWeight: 500, color: S.gold, fontFamily: DISPLAY }}>Recent Arrangements</h2>
           <p style={{ margin: 0, fontSize: "13px", color: S.muted }}>
             Your last 5 generated arrangements, kept on this device. Click one to bring it back.
           </p>
@@ -71,7 +71,7 @@ export default function HistoryPanel({ S, history, onRestore, onDelete, onClearA
 
       {history.length === 0 ? (
         <div style={{ padding: "40px", textAlign: "center", color: S.muted, fontSize: "14px", border: `1px dashed ${S.border}`, borderRadius: "6px" }}>
-          No saved arrangements yet — generate one and it'll show up here.
+          No saved arrangements yet. Generate one and it'll show up here.
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

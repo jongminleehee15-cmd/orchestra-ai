@@ -122,9 +122,9 @@ export default function SongSearchPanel({ onSelect, S }) {
         <div style={{ marginBottom: "20px", padding: "12px 16px", background: S.surface, border: `1px dashed ${S.border}`, borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
           <div style={{ fontSize: "13px", color: S.muted, lineHeight: 1.5 }}>
             <span style={{ color: S.text }}>Have the sheet music?</span> Upload MusicXML (.musicxml, .xml, .mxl) for a
-            guaranteed-exact melody — MuseScore.com scores can be downloaded in this format. MIDI (.mid) also works
+            guaranteed-exact melody (MuseScore.com scores can be downloaded in this format). MIDI (.mid) also works
             (e.g. from Mutopia Project) but its melody is guessed by highest-note extraction, which is reliable for
-            simple, clearly voice-led tunes and less so for dense piano/guitar textures — worth a spot-check afterward.
+            simple, clearly voice-led tunes and less so for dense piano/guitar textures. Worth a spot-check afterward.
           </div>
           <input ref={fileRef} type="file" accept=".musicxml,.xml,.mxl,.mid,.midi" onChange={handleImport} style={{ display: "none" }} />
           <button
@@ -141,7 +141,7 @@ export default function SongSearchPanel({ onSelect, S }) {
         </div>
       ) : (
         <div style={{ marginBottom: "20px", padding: "12px 16px", background: S.surface, border: `1px dashed ${S.border}`, borderRadius: "6px", fontSize: "13px", color: S.muted, lineHeight: 1.5 }}>
-          <span style={{ color: S.text }}>Score upload is temporarily unavailable</span> on this deployment — search the library above or try again later.
+          <span style={{ color: S.text }}>Score upload is temporarily unavailable</span> on this deployment. Search the library above or try again later.
         </div>
       )}
       {importErr && (
@@ -186,7 +186,7 @@ export default function SongSearchPanel({ onSelect, S }) {
       {!loading && !searched && library.length > 0 && (
         <div style={{ marginTop: "8px" }}>
           <p style={{ margin: "0 0 4px", fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: S.muted }}>
-            Score library — exact public-domain melodies
+            Score library: exact public-domain melodies
           </p>
           <p style={{ margin: "0 0 14px", fontSize: "12px", color: S.muted, fontStyle: "italic" }}>
             These works arrange from real score data: every note of the melody is guaranteed accurate.
