@@ -1,5 +1,10 @@
 # OrchestraAI — Work Hand-off (resume point)
 
+> **STALE as of 2026-09-26.** This file reflects the state on 2026-07-23 and
+> has not been maintained since; the "repo is local-only (not pushed)" line
+> below is no longer true (it is pushed to `origin/feature/score-library`).
+> For current state read `CLAUDE.md`, then `ENGINE_NOTES.md`. Kept for history.
+
 > **For the next Claude session / account.** This documents everything built so
 > far, the one open blocker, and exactly where to resume. Read this together
 > with `README.md` (setup) and the original project brief. The user's stated
