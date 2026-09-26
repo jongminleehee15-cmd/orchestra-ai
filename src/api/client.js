@@ -68,9 +68,18 @@ export async function generateBlueprint(params) {
 }
 
 // → { abc, melodyWarnings?, rangeWarnings? } for a single instrument part.
-// melodyWarnings: spots where the part still deviates from the canonical melody
-// after the server's automatic repair pass. rangeWarnings: notes still outside
-// the instrument's realistic playable range.
+//
+// `abc` is a complete, header-included ABC tune assembled server-side. The
+// server asks the model for bare measures and builds the header itself, so
+// raw model output never reaches the browser — this shape is unaffected by
+// how generation is prompted.
+//
+// melodyWarnings: everything the user should know about this part after the
+// server's automatic repair pass — not only melody deviations, but also bars
+// padded or trimmed to fit the meter, a part padded or trimmed to the
+// requested measure count, and melody-carrying bars left wrong on purpose
+// rather than rewritten. rangeWarnings: notes still outside the instrument's
+// realistic playable range.
 export async function generateInstrumentABC(params) {
   const { abc, melodyWarnings, rangeWarnings } = await postJson("/api/part", params);
   return { abc, melodyWarnings: melodyWarnings || [], rangeWarnings: rangeWarnings || [] };
