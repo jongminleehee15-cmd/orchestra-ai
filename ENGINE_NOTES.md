@@ -110,6 +110,245 @@ pattern (`server/test/chunking.test.js`), just applied one layer earlier;
 the trim-deletes-the-cadence mechanism was directly observed pre-fix, not
 inferred.
 
+## Chunked-path retry tie-break never got the length-retryable fix (2026-09-24)
+
+Bug: the §"Length is a retryable problem" fix above landed only on the
+non-chunked `/api/part` path. `generatePartChunked`'s own retry-acceptance
+check was still the original flat-sum comparison (`second.total <
+issues.total`) — the exact bug already diagnosed and fixed once, just not
+propagated to its sibling code path. Consequence: on any arrangement long
+enough to chunk (>24 measures — i.e. most real arrangements), a section
+retry that fixed the wrong measure count but traded it for an
+equal-or-worse melody/range problem got REJECTED, keeping the wrong-length
+section, which then fell through to `fitMeasureCount`'s rest-padding — a
+block of silence mid-piece. User-reported as "musical lines not generating
+fully, lines getting cut off."
+
+Fixed by pulling the comparison out into one shared, tested function
+(`isBetterAttempt` in `server/lib/chunking.js`, covered in
+`chunking.test.js`) that both `/api/part` paths now call, instead of two
+copies of the same logic that can silently drift apart again.
+
+**Live-verified 2026-09-24**: a real 48-measure Epic/Lush trio (library
+Canon in D theme extended via `extendLibraryMelody`, Violin/Cello/Trumpet)
+hit the exact failure mode live — Trumpet's section 33-48 failed its first
+attempt (`1 structure, 0 melody, 0 range`). The corrected retry logic
+accepted the repair; all three parts shipped at exactly 48 measures with
+zero warnings. No `max_tokens` truncation occurred in this run (see next
+item) — the failure was the model under-writing a section on the first
+pass, not a token-ceiling cutoff, and the retry alone resolved it once the
+tie-break stopped rejecting valid fixes.
+
+## Silent failure when a part response has no ABC header at all (2026-09-24)
+
+Bug, found by inspection while investigating the above (not yet observed
+live): both `/api/part` paths derive the response's header via
+`headerOf(abc)`, which falls back to returning the ENTIRE input string
+when no `K:` line is found (empty response, a refusal/prose reply, or
+truncation before ever reaching a header). The non-chunked path's
+length-fix guard was `if (got.length !== measures && headerOf(abc) !==
+abc)` — when there's no header at all, `headerOf(abc) === abc`, so this
+condition is false and the WHOLE length-repair block is skipped: no
+padding, no `lengthNote` warning, and whatever garbage/empty text came
+back ships to the client as a "done" part with no indication anything
+went wrong. The chunked path had a related but worse variant:
+`if (!header) header = headerOf(abcChunk)` accepted the first chunk's
+`headerOf()` result unconditionally — a headerless first chunk would make
+the ENTIRE assembled part's header the garbage/empty text, corrupting
+every section, not just one.
+
+Fixed: both paths now check for an actual `K:` line before trusting a
+`headerOf()` result; if none is found (immediately on the non-chunked
+path, or after every chunk on the chunked path), a minimal valid ABC
+header is synthesized from the request's own key/instrument/tempo data so
+the part can still be padded into a playable (all-rests) fallback, and a
+`lengthNote` warning is always set so this is never silent.
+
+Not yet live-verified (no real run has hit a headerless response) — this
+is a defense against a failure mode the code path made possible, found by
+reading the guard condition against what `headerOf()` actually returns on
+its fallback branch, not from an observed incident. Mention if a user
+reports a part that renders as completely blank/empty with no warning at
+all, distinct from the partial-cutoff pattern above.
+
+## Generated bars were never checked for length (2026-09-24)
+
+**The biggest real defect found so far, and the direct cause of "lines don't
+finish / get cut off."** Nothing validated that a generated part's bars hold
+the right number of beats. `checkPartMelody` only inspects measures where the
+part carries the MELODY; `checkPartRange` only inspects pitches; the structure
+check only counts measures. `measureUnits`/`analyzeMelody` did bar math, but
+were applied ONLY to the canonical melody, never to the parts built from it.
+abcjs does not help: `parseOnly` accepts a wrong-length bar with
+`warnings === undefined`. So a bar with an extra or missing beat shipped
+completely silently.
+
+Why that presents as the user's symptom: a wrong-length bar shifts everything
+after it in that part. Measured directly with abcjs's own audio sequencer —
+in a 4-bar, 2-part score, a single 9-unit bar in 4/4 makes that part end
+**0.125 beats after** the other. Over a real arrangement the error compounds
+every time it recurs, so one line runs past the others, ends in the wrong
+place, or drifts audibly out of time. It is not cosmetic and it is not a
+rendering issue.
+
+Fixed with three layers:
+1. `checkPartBars` (`server/lib/partCheck.js`) validates EVERY measure of
+   every generated part against the meter, on both `/api/part` paths. Its
+   conventions deliberately mirror `analyzeMelody` exactly (same 0.01
+   tolerance, same `(3` tuplet skip) so part-level and melody-level checks
+   can never disagree about what a valid bar is.
+2. Bar problems join the existing repair retry with precise per-bar diffs,
+   and count as STRUCTURAL in `isBetterAttempt` — a retry that fixes bar
+   lengths beats one that merely trades problem types.
+3. `repairPartBars` (`server/lib/chunking.js`) is the deterministic last
+   resort. **Asymmetric by design**: accompaniment bars are padded with rests
+   or trimmed (the straddling event is shortened to fill the bar, not
+   dropped), but a bar where the part carries the MELODY is never rewritten —
+   altering it would change the tune and manufacture a `checkPartMelody`
+   failure on a part that had none, the same self-inflicted damage as
+   `fitMeasureCount`'s cadence-deleting trim. Melody bars are surfaced as
+   warnings so the user can regenerate instead.
+
+**Live-verified 2026-09-24, and it fired immediately.** An 8-measure
+Baroque/Moderate Flute + Clarinet arrangement of the Canon in D theme: the
+Flute's first attempt came back with **7 of its 8 bars malformed** (six at 9
+eighth-units, one at 12, all in 4/4 — e.g. `!f!f2 (g f e) e2 f e`), and the
+Clarinet's with one 10-unit bar. Every one of those would previously have
+shipped silently. The retry resolved both parts completely; the final parts
+had 0 malformed bars, 0 melody warnings, 0 range warnings, and both tracks
+ended at exactly 8.000 beats. A 48-measure Epic/Lush trio (the chunked path)
+came back clean on the first pass with all three tracks ending at exactly
+48.000.
+
+Ordering note: `enforceRange` runs BEFORE `repairPartBars`. That is safe
+because octave shifts preserve note durations — verified directly on a part
+whose measure was both out of range and overfull: unit counts were identical
+before and after (`[8,9,8]` → `[8,9,8]`) and the bad bar was still detected.
+
+### Tuplets are measured, not skipped (closed 2026-09-25)
+
+Originally every bar containing `(3` was SKIPPED by every bar-math check —
+`analyzeMelody`, `checkPartBars`, `checkPartMelody` and `repairPartBars` all
+bailed on it — so a wrong-length triplet bar shipped unvalidated: the same
+silent failure this whole section exists to remove. `scanMeasure` now
+implements the ABC tuplet contract properly: `(p`, `(p:q` and `(p:q:r` scale
+the next `r` events by `q/p`, with the standard defaults (2→3, 3→2, 4→3, 6→2,
+8→3; 5/7/9 follow the meter — 3 in compound time, 2 in simple). `(3CDE`
+measures 2 eighth-units, not 3. Every skip is gone. A `(` not followed by a
+digit is still just a slur and carries no ratio.
+
+Repair stays conservative where it must: a SHORT tuplet bar may be padded
+(rests append after the group, never inside it), but an OVERFULL one is
+reported rather than trimmed — cutting into a tuplet would orphan the group,
+leaving a `(3` whose remaining notes no longer add up.
+
+### One duration parser, finally (closed 2026-09-25)
+
+`tokenizeMeasure` in `partCheck.js` had its own third duration parser, which
+knew neither tuplets nor chords whose length is written inside the bracket
+(`[C2E2G2]`), so melody rhythm comparison mis-measured both. It now reads
+durations off `scanMeasure` like everything else and derives only pitch
+itself. Duration is computed in exactly one place in the codebase — the same
+drift that left the chunked retry path broken, closed structurally.
+
+Verified: numerically identical on all 229 real library and generated-part
+measures; `[C2E2G2]` and `[CEG]2` now agree; a part that flattens a canonical
+triplet bar into even notes is caught instead of waved through.
+
+### The tolerance was hiding real errors (closed 2026-09-25)
+
+The bar comparison used `> 0.01`. Every ABC duration is a rational whose
+denominator divides 16 × 9, so the SMALLEST error a real notation mistake can
+produce is 1/144 ≈ 0.0069 — which is **smaller than the tolerance**. A
+genuinely wrong bar could pass as "close enough". Measured float error from
+summing tuplet thirds is only 8.9e-16, so the tolerance was three orders of
+magnitude larger than it needed to be.
+
+Replaced by one shared `UNIT_EPSILON = 1e-9` (`abcMelody.js`), used by every
+duration comparison: six orders of magnitude above the float noise, seven
+below the smallest real error. It cannot mask a mistake and cannot fire on
+arithmetic. A test pins both bounds so neither can drift.
+
+### Melody validation is interval-exact, not just contour (closed 2026-09-25)
+
+The melody check compared RHYTHM exactly but pitch only by CONTOUR
+(rise/fall/repeat), so a part with the right shape but the wrong interval
+sizes — "everything a third off" — passed. `tokenizeMeasure` now resolves
+each note to a true semitone by applying the key signature, plus explicit
+accidentals with the bar-long carry a player reads, and `compareMeasure`
+compares each note's interval from the bar's first pitched note.
+
+Measuring from the bar's own first note keeps this transposition-invariant: a
+B♭/F/E♭ part and an octave shift move every pitch equally, so both still pass,
+while a wrong interval does not.
+
+**It requires BOTH key signatures** (the canonical tune is at concert pitch,
+the part is written in its own key) and is therefore OPT-IN: called without
+them it falls back to exactly the old rhythm+contour behaviour. This matters
+— an early version defaulted the keys to 0 and produced 11–15 false positives
+on a known-good B♭ trumpet part, because reading keyed music as if it were in
+C mis-resolves every accidental. `writtenKeyFor` now returns its `fifths`
+alongside the key name so the two can never disagree.
+
+Verified against real output, not just fixtures: **zero** false positives
+across six known-good live-generated parts (two runs × Violin/Cello/Trumpet,
+288 melody-section measures), while catching a constructed wrong-interval bar
+that contour reported as clean. A full live regeneration afterwards produced
+0 melody warnings on all three parts.
+
+### What is and isn't claimed
+
+Checkable, and now verified end to end:
+- **Every shipped bar either sums to the meter, was repaired to it, or is
+  reported as a warning** — tuplet bars included.
+- **Every melody-carrying bar is checked for exact rhythm AND exact
+  intervals**, not merely melodic direction.
+
+This still is not a claim that no notation error is possible. What remains is
+a stated design boundary rather than an unchecked gap: the comparison is
+interval-exact rather than absolute-pitch-exact (by design — it must accept
+transposing instruments and octave placement), and a part may legitimately
+differ from the canonical tune anywhere it does not carry the melody, which is
+the arranger's job and not validated note-by-note.
+
+## Parts are requested as a JSON envelope, not raw ABC (2026-09-24)
+
+Part generation asks for `{"measures": ["<bar>", ...]}` — one string per bar —
+instead of a complete free-text ABC tune (`server/lib/partFormat.js`,
+`buildPartPrompt`'s OUTPUT FORMAT block). Two responsibilities moved off the
+model and onto the server:
+
+- **The header is built server-side** (`partHeader`) from the request's own
+  key, meter, tempo and instrument data. A part can no longer be notated in
+  the wrong key — a real hazard for transposing instruments, which read in a
+  different key than concert pitch — nor arrive with no header at all. The
+  header-synthesis fallbacks added earlier the same day are deleted rather
+  than left as unreachable branches in `/api/part`. One related guard does
+  remain, deliberately: `enforceRange`'s `header === String(partAbc)` early
+  return in `ranges.js`. It is unreachable from the part flow now, but
+  `enforceRange` is a shared helper and rebuilding around a header it could
+  not find would corrupt the part, so it is kept and commented rather than
+  removed.
+- **The measure count is the array's length**, stated outright, instead of
+  being inferred by splitting on barlines.
+
+`parsePartMeasures` is deliberately strict about what may reach the stave.
+`extractJson` salvages a truncated array by walking back to the last `]`,
+which can turn a cut-off response into a valid-looking SHORT one — so a
+response that was clearly attempting the envelope but got truncated returns
+`[]` (→ explicit rests + a warning) rather than letting raw JSON text be read
+as notation. Prose (a refusal, commentary) is rejected the same way by a
+notation-shape test. Raw ABC is still accepted as a fallback, so a response
+that ignores the format degrades instead of failing.
+
+Not claimed: this does not make notation errors impossible. What it
+guarantees is narrower and checkable — every shipped non-tuplet bar either
+sums to the meter, or was repaired to, or is reported as a warning; and the
+header always matches the request. Live A/B against the saved pre-change
+baseline (same plan, same 48-measure trio) showed identical measure counts,
+identical zero-warning results, melody measures still reproduced note-for-note
+from the canonical tune, and no quality regression.
+
 ## LLM-side rules that shape musicality (in `server/prompts.js`)
 
 - Melody handoffs happen at phrase boundaries, sections ≥ 4 bars.

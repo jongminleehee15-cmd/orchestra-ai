@@ -29,6 +29,13 @@ export async function callAnthropic({ prompt, maxTokens, webSearch = false, maxS
     text += (data.content || [])
       .map((b) => (b.type === "text" ? b.text : ""))
       .join("");
+    // A response cut off by the token ceiling mid-generation (not the model
+    // choosing to stop) is a distinct failure mode from "wrote too little" —
+    // flag it so a truncated part/melody is diagnosable instead of looking
+    // like an ordinary under-write.
+    if (data.stop_reason === "max_tokens") {
+      console.warn(`[anthropic] response hit the max_tokens ceiling (${maxTokens}, used ${data.usage?.output_tokens ?? "?"}) — output was truncated mid-generation`);
+    }
     if (data.stop_reason !== "pause_turn") break;
     messages.push({ role: "assistant", content: data.content });
   }

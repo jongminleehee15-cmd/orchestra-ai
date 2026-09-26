@@ -105,7 +105,7 @@ function findMud(parts, melodyPlan) {
         );
         if (close) {
           warnings.push(
-            `measure ${measureNo}: ${lowNotes[a].instrName} and ${lowNotes[b].instrName} both sit below C3 in close position — likely to sound muddy; try spacing them a wider interval apart or moving one an octave`,
+            `measure ${measureNo}: ${lowNotes[a].instrName} and ${lowNotes[b].instrName} both sit below C3 in close position, which is likely to sound muddy; try spacing them a wider interval apart or moving one an octave`,
           );
           break outer;
         }
@@ -146,7 +146,7 @@ function findUnison(parts, melodyPlan) {
         // coincidental unison bar is not doubling.
         if (compared >= 2 && identical / compared >= 0.5) {
           warnings.push(
-            `${pa.instrName} and ${pb.instrName} play identical pitches in ${identical}/${compared} non-melody measures — likely unwanted unison doubling instead of distinct material`,
+            `${pa.instrName} and ${pb.instrName} play identical pitches in ${identical}/${compared} non-melody measures, which is likely unwanted unison doubling instead of distinct material`,
           );
         }
       }
@@ -214,7 +214,7 @@ function findDynamicImbalance(parts, melodyPlan) {
       const max = p.ranges[i]?.max;
       if (max !== null && max !== undefined && max > melodyLevel) {
         warnings.push(
-          `measure ${measureNo}: ${p.instrName} reaches ${LEVEL_NAME[max]} — louder than ${melodyParts.map((m) => m.instrName).join("/")}'s softest marked dynamic (${LEVEL_NAME[melodyLevel]}) there — the melody should not be the quietest voice in its own measure`,
+          `measure ${measureNo}: ${p.instrName} reaches ${LEVEL_NAME[max]}, louder than ${melodyParts.map((m) => m.instrName).join("/")}'s softest marked dynamic (${LEVEL_NAME[melodyLevel]}) there; the melody should not be the quietest voice in its own measure`,
         );
         break; // one flagged instrument per measure is enough signal
       }

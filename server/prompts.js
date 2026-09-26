@@ -1,5 +1,4 @@
-import { getMeta } from "./lib/instrMeta.js";
-import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
+import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures, barUnitsFor } from "./lib/abcMelody.js";
 import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
 import { writtenRangeInfo } from "./lib/ranges.js";
 import { styleBlock } from "./lib/styles.js";
@@ -323,11 +322,19 @@ export function buildPartPrompt({
   chunk = null,
 }) {
   const writeCount = chunk ? chunk.end - chunk.start + 1 : measures;
-  const { clef } = getMeta(instrName);
   // The arrangement is stored at concert pitch; work out the key THIS instrument
   // reads in (e.g. a Bb trumpet in a concert-Bb piece reads in C).
   const concertKey = conventionalKey(key);
   const { writtenKey, label, interval, transposes } = writtenKeyFor(key, instrName);
+  // The model returns bare measures; the ABC header (including clef) is built
+  // server-side in index.js, so nothing here needs the clef any more.
+  const barUnits = barUnitsFor(timeSignature);
+  // A shape example that actually adds up IN THIS METER — showing a 4/4
+  // example to a 3/4 part would be demonstrating a wrong-length bar.
+  const halfBar = barUnits / 2;
+  const exampleMeasures = Number.isInteger(halfBar)
+    ? `["!mf!C${halfBar} E${halfBar}", "G${barUnits}"]`
+    : `["!mf!C${barUnits}", "G${barUnits}"]`;
   const melodySections = role?.melodySections || [];
   const hasMelody = melodySections.length > 0;
 
@@ -359,7 +366,7 @@ export function buildPartPrompt({
   // Transposing instruments read in a different key than concert pitch.
   const transposeBlock = transposes
     ? `TRANSPOSING INSTRUMENT — ${instrName} is a transposing instrument (${label}); the concert key is ${concertKey}:
-- Write this WHOLE part in ${writtenKey} and put K:${writtenKey} in the header.
+- Write every pitch of this part in ${writtenKey}. (The K:${writtenKey} key signature is attached for you — you write only the notes.)
 - Every pitch you write sounds ${interval.replace(/ up.*/, "")} LOWER than written, so transpose all notes (melody excerpts included) UP by ${interval} from the concert pitches in the reference. Keep shapes and rhythms identical — only the written pitch/key changes.
 - Use the ${writtenKey} key signature and spell accidentals conventionally so the part is easy to read.
 `
@@ -396,7 +403,7 @@ ${chunk
 - Your output's FIRST measure is piece measure ${chunk.start}. All measure numbers elsewhere in this prompt are PIECE measure numbers.
 ${chunk.prevTail ? `- Your part so far ends with (piece measure${chunk.start > 2 ? `s ${chunk.start - 2}–` : " "}${chunk.start - 1}): ${chunk.prevTail}
 - Continue seamlessly from that ending — connect the voice-leading and register, don't restart the figuration from scratch.` : "- This is the OPENING section of the part."}
-- Still output a complete ABC tune (X:1 through K: headers, then the ${writeCount} measures, ending with |]).
+- Return exactly ${writeCount} measure strings for THIS section only — not the whole piece.
 `
     : "";
 
@@ -417,21 +424,19 @@ ${transposeBlock}
 ${rangeBlock}
 CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `transposed ${interval} into ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower (or higher, for instruments whose range is above the tune), remain inside your playable range, and play the moving accompaniment described above, never a static drone.
 
-ABC NOTATION RULES:
-- Start: X:1
-- T:${instrName}${label ? ` (${label})` : ""}
-- M:${timeSignature}
-- L:1/8
-- Q:1/4=${bpm}
-- K:${writtenKey} clef=${clef}
-- Write the ENTIRE part in ${writtenKey}${transposes ? ` — this is the ${label} written key, NOT concert ${concertKey}` : ""}
-- Write exactly ${writeCount} measures${chunk ? ` (piece measures ${chunk.start}–${chunk.end})` : ""}, barlines |, end with |]
-- Every measure's note durations MUST sum to a full ${timeSignature} measure
-- Note durations as multiples of L (C4=half, C2=quarter, C=eighth, C/2=sixteenth)
-- Dynamics: !p! !mp! !mf! !f! !ff! placed before a note
-- Slurs: (notes), ties: note-note
-- Every note must sit inside the PLAYABLE RANGE stated above — re-check your extremes before finishing
-- NO markdown, NO backticks, NO explanations — raw ABC only, starting with X:1`;
+OUTPUT FORMAT — return ONLY this JSON object and nothing else:
+{"measures": ["<measure 1>", "<measure 2>", ...]}
+
+- The array MUST hold EXACTLY ${writeCount} strings, one per measure${chunk ? ` (piece measures ${chunk.start}–${chunk.end})` : ""}. The array's length IS the part's length, so count them before you answer.
+- Each string is ONE measure of ABC note text and nothing else. Do NOT write barlines (| or |]), headers (X: T: M: L: Q: K:), measure numbers, or "chord symbol" annotations — the header and barlines are attached automatically.
+- Note lengths are in L:1/8 units: C = eighth, C2 = quarter, C3 = dotted quarter, C4 = half, C6 = dotted half, C8 = whole, C/2 = sixteenth. A rest is z (z4 = half rest).
+- EVERY measure MUST total EXACTLY ${barUnits} of those units — a full ${timeSignature} bar. Add up each bar before moving to the next: a bar that is short or overfull pushes this part out of time with the entire ensemble and is the single most damaging mistake you can make here.
+- Write every pitch in ${writtenKey}${transposes ? ` — the ${String(label).replace(/^in /, "")} written key, NOT concert ${concertKey}` : ""}.
+- Dynamics: !p! !mp! !mf! !f! !ff! immediately before a note. Slurs: (notes). Ties: note-note.
+- Every note must sit inside the PLAYABLE RANGE stated above — re-check your extremes before finishing.
+- NO markdown, NO backticks, NO commentary — just the JSON object.
+
+Example shape for a 2-measure ${timeSignature} answer: {"measures": ${exampleMeasures}}`;
 }
 
 // Build the role instruction text from a blueprint role + sections.

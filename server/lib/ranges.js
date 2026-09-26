@@ -201,10 +201,18 @@ function fixMeasure(measureStr, lo, hi) {
 // still outside the instrument's range so an unplayable part never ships.
 // Returns { abc, changed, changes[] }; the ABC is rebuilt (header + 4 bars
 // per line) only when something actually moved.
+//
+// Octave shifts preserve every note's duration, so this never changes a bar's
+// length — which is why it is safe to run BEFORE repairPartBars in
+// /api/part, and why a wrong-length bar is still detectable afterwards.
 export function enforceRange(partAbc, instrName) {
   const info = writtenRangeInfo(instrName);
   const header = headerOf(partAbc);
   // No range data, or no K: header to rebuild around — leave untouched.
+  // The headerless case is now unreachable from /api/part (partHeader builds
+  // the header server-side, so it always has a K: line); this stays as a
+  // guard for any other caller, since rebuilding around a header we couldn't
+  // find would corrupt the part.
   if (!info || header === String(partAbc)) return { abc: partAbc, changed: false, changes: [] };
   const lo = info.lo.midi - 1; // same key-signature slack as checkPartRange
   const hi = info.hi.midi + 1;
@@ -234,9 +242,9 @@ export function checkPartRange(partAbc, instrName, measureOffset = 0) {
       const v = midiOf(tok);
       if (v === null) continue;
       if (v < lo) {
-        problems.push(`measure ${i + 1 + measureOffset}: "${tok}" (~${midiToName(v)}) is BELOW ${instrName}'s playable range — lowest written note is ${info.lo.name} (ABC "${info.lo.abc}")`);
+        problems.push(`measure ${i + 1 + measureOffset}: "${tok}" (~${midiToName(v)}) is BELOW ${instrName}'s playable range; lowest written note is ${info.lo.name} (ABC "${info.lo.abc}")`);
       } else if (v > hi) {
-        problems.push(`measure ${i + 1 + measureOffset}: "${tok}" (~${midiToName(v)}) is ABOVE ${instrName}'s playable range — highest written note is ${info.hi.name} (ABC "${info.hi.abc}")`);
+        problems.push(`measure ${i + 1 + measureOffset}: "${tok}" (~${midiToName(v)}) is ABOVE ${instrName}'s playable range; highest written note is ${info.hi.name} (ABC "${info.hi.abc}")`);
       }
     }
   });

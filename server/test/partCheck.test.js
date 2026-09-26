@@ -78,3 +78,69 @@ test("partMeasures strips headers and joins wrapped body lines", () => {
   const part = wrap("F2 F2 G2 A2 |\nA2 G2 F2 E2 |]");
   assert.equal(partMeasures(part).length, 2);
 });
+
+test("interval-exact checking catches a wrong interval that contour accepts", () => {
+  // Concert D: the tune is F# F# G A — it rises a SEMITONE from note 2 to 3.
+  const tune = "F2 F2 G2 A2 |]";
+  // Same shape (up, up) but the wrong distances. Contour only sees direction,
+  // so this passes it; interval sizes expose it.
+  const wrongSizes = wrap("F2 F2 A2 B2 |]", "D");
+  assert.deepEqual(
+    checkPartMelody(wrongSizes, tune, ["mm.1-1"], 0, "4/4").problems, [],
+    "contour alone cannot see this",
+  );
+  const caught = checkPartMelody(wrongSizes, tune, ["mm.1-1"], 0, "4/4", 2, 2);
+  assert.equal(caught.problems.length, 1);
+  assert.match(caught.problems[0], /note 3 sits 2 semitones too high/);
+
+  // Still transposition-invariant: a Bb instrument reading in E (4 sharps)
+  // plays the identical tune and must pass.
+  assert.deepEqual(
+    checkPartMelody(wrap("G2 G2 A2 B2 |]", "E"), tune, ["mm.1-1"], 0, "4/4", 2, 4).problems, [],
+    "a genuine Bb transposition is not an error",
+  );
+  // And an octave shift, which moves every pitch equally.
+  assert.deepEqual(
+    checkPartMelody(wrap("f2 f2 g2 a2 |]", "D"), tune, ["mm.1-1"], 0, "4/4", 2, 2).problems, [],
+  );
+
+  // The check is OPT-IN: without both key signatures it must not fire, since
+  // reading keyed music as if it were in C would mis-resolve every accidental.
+  assert.deepEqual(
+    checkPartMelody(wrap("G2 G2 A2 B2 |]", "E"), tune, ["mm.1-1"], 0, "4/4").problems, [],
+  );
+});
+
+test("accidentals carry to the end of the bar, as a player reads them", () => {
+  // An explicit ^F applies to every later F in that bar, and "=" cancels it.
+  const withCarry = tokenizeMeasure("^F2 F2", "4/4", 0).map((n) => n.st);
+  assert.equal(withCarry[0], withCarry[1], "the second F inherits the sharp");
+  const cancelled = tokenizeMeasure("^F2 =F2", "4/4", 0).map((n) => n.st);
+  assert.equal(cancelled[0] - cancelled[1], 1, "the natural cancels it");
+  // The key signature supplies the sharp when nothing is written.
+  const keyed = tokenizeMeasure("F2", "4/4", 2).map((n) => n.st);
+  const plain = tokenizeMeasure("F2", "4/4", 0).map((n) => n.st);
+  assert.equal(keyed[0] - plain[0], 1, "D major sharpens F");
+});
+
+test("a chord's length counts the same written inside or outside the bracket", () => {
+  // tokenizeMeasure used to run its own duration parser that only understood
+  // "[CEG]2", so "[C2E2G2]" measured as a single eighth and a part spelling a
+  // chord that way was reported as a phantom rhythm difference.
+  assert.equal(tokenizeMeasure("[C2E2G2]")[0].len, 2);
+  assert.equal(tokenizeMeasure("[CEG]2")[0].len, 2);
+  assert.equal(tokenizeMeasure("[C2E2G2]")[0].st, tokenizeMeasure("[CEG]2")[0].st);
+});
+
+test("tuplet measures are compared instead of being skipped", () => {
+  // Both the canonical melody and the part used to be waved through whenever
+  // either contained "(3", so a part that replaced a triplet figure with
+  // something else entirely passed melody validation unchecked.
+  const triplets = "(3CDE (3FGA (3Bcd (3efg";
+  const matching = checkPartMelody(wrap(`${triplets} |]`), triplets, ["mm.1-1"], 0, "4/4");
+  assert.deepEqual(matching.problems, [], "an identical triplet bar still passes");
+
+  const flattened = checkPartMelody(wrap("C2 E2 G2 E2 |]"), triplets, ["mm.1-1"], 0, "4/4");
+  assert.equal(flattened.problems.length, 1, "a flattened rhythm is now caught");
+  assert.match(flattened.problems[0], /expected 12 notes/);
+});

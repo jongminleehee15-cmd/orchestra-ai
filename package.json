@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "server:install": "npm --prefix server install",
     "setup": "npm install && npm run server:install",
-    "test": "node --test server/test/library.test.js server/test/partCheck.test.js server/test/fullScore.test.js server/test/ranges.test.js server/test/chunking.test.js server/test/styles.test.js server/test/corpus.test.js server/test/openscore.test.js server/test/openhymnal.test.js server/test/imports.test.js server/test/limits.test.js"
+    "test": "node --test server/test/library.test.js server/test/partCheck.test.js server/test/fullScore.test.js server/test/ranges.test.js server/test/chunking.test.js server/test/styles.test.js server/test/corpus.test.js server/test/openscore.test.js server/test/openhymnal.test.js server/test/imports.test.js server/test/limits.test.js server/test/partFormat.test.js"
   },
   "dependencies": {
     "abcjs": "^6.4.4",

@@ -75,6 +75,14 @@ export function conventionalKey(key) {
   return nameFor(fifths, minor);
 }
 
+// The key SIGNATURE of a concert key, as fifths (C/Am = 0, D = 2, Eb = -3).
+// Minor keys already carry their relative-major signature from parseKey.
+// Used by melody validation to resolve written notes to true pitches.
+export function keyFifths(key) {
+  const { fifths } = parseKey(key);
+  return respell(fifths);
+}
+
 // Strip a numbered-voice suffix: "Trumpet 2" → "Trumpet".
 const baseInstrument = (name) => String(name || "").replace(/\s+\d+$/, "");
 
@@ -85,10 +93,17 @@ export function writtenKeyFor(concertKey, instrName) {
   const { fifths, minor } = parseKey(concertKey);
   const t = TRANSPOSE[baseInstrument(instrName)];
   if (!t) {
-    return { writtenKey: nameFor(fifths, minor), label: null, interval: null, transposes: false };
+    // `fifths` is the written key's SIGNATURE, returned alongside its name so
+    // the two can never disagree — melody validation needs it to resolve
+    // written notes to true pitches.
+    return {
+      writtenKey: nameFor(fifths, minor), fifths: respell(fifths),
+      label: null, interval: null, transposes: false,
+    };
   }
   return {
     writtenKey: nameFor(fifths + t.fifths, minor),
+    fifths: respell(fifths + t.fifths),
     label: t.label,
     interval: t.interval,
     transposes: true,

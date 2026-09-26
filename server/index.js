@@ -9,16 +9,18 @@ import {
   buildGroundTruthPrompt, buildLibraryBlueprintPrompt, buildLibraryExtensionPrompt,
   buildHarmonizePrompt,
 } from "./prompts.js";
-import { analyzeMelody, splitMelodyIntoMeasures } from "./lib/abcMelody.js";
+import { analyzeMelody, splitMelodyIntoMeasures, barUnitsFor } from "./lib/abcMelody.js";
 import { loadLibrary, getWork, searchLibrary, workToSong } from "./lib/library.js";
 import { searchCorpus, getCorpusWork } from "./lib/corpus.js";
 import { searchOpenScore, getOpenScoreWork } from "./lib/openscore.js";
 import { searchOpenHymnal, getOpenHymnalWork } from "./lib/openhymnal.js";
 import { tonicChord } from "./lib/symbolic.js";
 import { loadImports, getImportedWork, searchImports, ingestScore, saveImportChords, importToSong } from "./lib/imports.js";
-import { checkPartMelody, partMeasures } from "./lib/partCheck.js";
+import { checkPartMelody, partMeasures, checkPartBars, melodyMeasureSet } from "./lib/partCheck.js";
 import { checkPartRange, enforceRange } from "./lib/ranges.js";
-import { CHUNK_THRESHOLD, CHUNK_SIZE, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount } from "./lib/chunking.js";
+import { partHeader, responseToPartAbc } from "./lib/partFormat.js";
+import { writtenKeyFor, keyFifths } from "./lib/transpose.js";
+import { CHUNK_THRESHOLD, CHUNK_SIZE, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount, isBetterAttempt, repairPartBars, barRepairNote } from "./lib/chunking.js";
 import { ALLOWED_MEASURES, MAX_INSTRUMENTS, isValidMeasures } from "./lib/limits.js";
 
 const app = express();
@@ -429,7 +431,8 @@ app.post("/api/part", handler(async (req, res) => {
   }
 
   const prompt = buildPartPrompt({ ...p, measures });
-  let abc = cleanAbc(await callAnthropic({ prompt, maxTokens: tokensForMeasures(measures) }));
+  const header = partHeader(p, p.instrName);
+  let abc = responseToPartAbc(await callAnthropic({ prompt, maxTokens: tokensForMeasures(measures) }), header);
 
   // Arrangement accuracy: in the measures this part carries the melody it must
   // reproduce the canonical tune (rhythm exactly; contour exactly — the check
@@ -437,9 +440,15 @@ app.post("/api/part", handler(async (req, res) => {
   // EVERY note must sit inside the instrument's realistic written range. One
   // repair attempt with the precise diffs; keep whichever version is cleaner.
   const melodySections = p.role?.melodySections || [];
+  // The canonical melody is written at concert pitch; this part is written in
+  // its own key. Both signatures are needed to resolve written notes to true
+  // pitches so intervals can be compared exactly — passing the wrong one (or
+  // none) for a transposing instrument mis-reads every accidental.
+  const concertFifths = keyFifths(p.key);
+  const writtenFifths = writtenKeyFor(p.key, p.instrName).fifths;
   const checkAll = (candidate) => {
     const melody = p.melodyAbc && melodySections.length > 0
-      ? checkPartMelody(candidate, p.melodyAbc, melodySections)
+      ? checkPartMelody(candidate, p.melodyAbc, melodySections, 0, p.timeSignature, concertFifths, writtenFifths)
       : { problems: [] };
     const range = checkPartRange(candidate, p.instrName);
     // A part that stops writing early (or runs long) is a retryable problem,
@@ -449,39 +458,39 @@ app.post("/api/part", handler(async (req, res) => {
     const structure = got === measures
       ? []
       : [`you wrote ${got} measures but this part must contain EXACTLY ${measures} — ${got < measures ? "continue the piece to its actual end, don't stop early" : "you went past the end; stop exactly at the final barline"}`];
+    // Every bar must hold exactly the meter's worth of beats. Nothing checked
+    // this before, so a bar with an extra or missing beat shipped silently and
+    // dragged that part out of alignment with the rest of the ensemble.
+    const bars = checkPartBars(candidate, p.timeSignature).problems;
     return {
-      melody: melody.problems, range: range.problems, structure,
-      total: melody.problems.length + range.problems.length + structure.length,
+      melody: melody.problems, range: range.problems, structure, bars,
+      total: melody.problems.length + range.problems.length + structure.length + bars.length,
     };
   };
 
   let issues = checkAll(abc);
   if (issues.total > 0) {
-    console.warn(`[part:${p.instrName}] checks failed (${issues.melody.length} melody, ${issues.range.length} range, ${issues.structure.length} structure):\n  ${[...issues.structure, ...issues.melody, ...issues.range].join("\n  ")}`);
+    console.warn(`[part:${p.instrName}] checks failed (${issues.melody.length} melody, ${issues.range.length} range, ${issues.structure.length} structure, ${issues.bars.length} bar-length):\n  ${[...issues.structure, ...issues.bars, ...issues.melody, ...issues.range].join("\n  ")}`);
     try {
       const fixList = [
         ...issues.structure.map((x) => `- [structure] ${x}`),
+        ...issues.bars.map((x) => `- [bar length] ${x}`),
         ...issues.melody.map((x) => `- [melody] ${x}`),
         ...issues.range.map((x) => `- [range] ${x}`),
       ].join("\n");
-      const retryAbc = cleanAbc(await callAnthropic({
+      const retryAbc = responseToPartAbc(await callAnthropic({
         prompt: `${prompt}
 
 YOUR PREVIOUS ATTEMPT HAD ERRORS, detected by automated checks against the canonical melody, the instrument's real playable range, and the required length. Fix EVERY one of them while keeping the rest of your arrangement:
 ${fixList}
 ${issues.range.length ? "\nRange errors are notes a real player physically cannot play — move that whole passage up or down an octave (or revoice the chord) so it fits the PLAYABLE RANGE; never just clip single notes." : ""}
 ${issues.structure.length ? "\nA part shorter than the requested length will otherwise be padded with silent rests to fill it out, which sounds broken next to the other instruments — actually write real music all the way to the final barline instead." : ""}
-Output the FULL corrected ABC part again, raw ABC only.`,
+${issues.bars.length ? `\nBar-length errors mean those measures hold the wrong number of beats, which drags this part out of time with every other instrument. Re-count each flagged bar: in L:1/8 units a plain letter = 1 (eighth), C2 = 2 (quarter), C3 = 3 (dotted quarter), C4 = 4 (half), C6 = 6 (dotted half), C8 = 8 (whole). Every bar must total exactly ${barUnitsFor(p.timeSignature)}. Fix the rhythm inside the bar — do NOT just delete notes to make the count work.` : ""}
+Return the FULL corrected part again as the same JSON object, nothing else.`,
         maxTokens: tokensForMeasures(measures),
-      }));
+      }), header);
       const second = checkAll(retryAbc);
-      // Structure (wrong length) dominates the tie-break: a retry that fixes
-      // the length but leaves an equal-or-worse melody/range count must still
-      // win over keeping a WRONG-LENGTH original, or this whole fix is a
-      // no-op whenever the retry trades one problem type for another.
-      const better = second.structure.length < issues.structure.length
-        || (second.structure.length === issues.structure.length && second.total < issues.total);
-      if (better) {
+      if (isBetterAttempt(second, issues)) {
         abc = retryAbc;
         issues = second;
       }
@@ -489,7 +498,7 @@ Output the FULL corrected ABC part again, raw ABC only.`,
       // retry failed — keep first attempt and its warnings
     }
     if (issues.total > 0) {
-      console.warn(`[part:${p.instrName}] still ${issues.melody.length} melody / ${issues.range.length} range / ${issues.structure.length} structure problem(s) after repair`);
+      console.warn(`[part:${p.instrName}] still ${issues.melody.length} melody / ${issues.range.length} range / ${issues.structure.length} structure / ${issues.bars.length} bar-length problem(s) after repair`);
     }
   }
 
@@ -504,22 +513,47 @@ Output the FULL corrected ABC part again, raw ABC only.`,
   // Exact-length guarantee: a part that stops writing early gets explicit
   // whole-measure rests to the requested length (and overruns get trimmed),
   // so the notation stays honest and parts align bar-for-bar.
+  // The header is always ours now (see partHeader), so the only failure left
+  // here is the wrong NUMBER of measures — including zero, when the response
+  // was empty, refused, or truncated before any usable notation.
   let lengthNote = null;
   const got = partMeasures(abc);
-  if (got.length !== measures && headerOf(abc) !== abc) {
+  if (got.length !== measures) {
     const fitted = fitMeasureCount(got, measures, p.timeSignature);
-    abc = `${headerOf(abc)}\n${stitchBody(fitted.measures)}`;
-    lengthNote = fitted.padded
-      ? `the part stopped at measure ${got.length} — measures ${got.length + 1}-${measures} are written as rests (Regenerate for a full take)`
-      : `the part ran ${fitted.trimmed} measure(s) long — measure${fitted.trimmed > 1 ? "s" : ""} ${measures + 1}-${got.length} (including the part's final bar) were deleted to fit; the ending may now cut off early relative to other parts (Regenerate for a proper ending)`;
+    abc = `${header}\n${stitchBody(fitted.measures)}`;
+    lengthNote = got.length === 0
+      ? `the model didn't return usable notation for this part, so all ${measures} measures are written as rests (Regenerate for a real take)`
+      : fitted.padded
+        ? `the part stopped at measure ${got.length}; measures ${got.length + 1}-${measures} are written as rests (Regenerate for a full take)`
+        : `the part ran ${fitted.trimmed} measure(s) long; measure${fitted.trimmed > 1 ? "s" : ""} ${measures + 1}-${got.length} (including the part's final bar) were deleted to fit; the ending may now cut off early relative to other parts (Regenerate for a proper ending)`;
     console.warn(`[part:${p.instrName}] length fix: ${lengthNote}`);
   }
 
-  if (enforced.changed || lengthNote) {
+  // Deterministic bar-length repair, after the retry has had its chance.
+  // Accompaniment bars that still hold the wrong number of beats are padded
+  // or trimmed to the meter; bars carrying the MELODY are never rewritten
+  // (that would alter the tune) and are surfaced as warnings instead.
+  const barFix = repairPartBars({
+    measures: partMeasures(abc),
+    timeSignature: p.timeSignature,
+    melodySet: melodyMeasureSet(melodySections),
+  });
+  if (barFix.repaired.length > 0) {
+    abc = `${headerOf(abc)}\n${stitchBody(barFix.measures)}`;
+    console.warn(`[part:${p.instrName}] bar-length auto-fix: ${barFix.repaired.join("; ")}`);
+  }
+
+  if (enforced.changed || lengthNote || barFix.repaired.length > 0) {
     issues = checkAll(abc); // recompute warnings on the corrected part
   }
 
-  const melodyOut = [...(lengthNote ? [lengthNote] : []), ...issues.melody];
+  const repairNote = barRepairNote(barFix.repaired);
+  const melodyOut = [
+    ...(lengthNote ? [lengthNote] : []),
+    ...(repairNote ? [repairNote] : []),
+    ...barFix.unrepairable,
+    ...issues.melody,
+  ];
   res.json({
     abc,
     melodyWarnings: melodyOut.length ? melodyOut : undefined,
@@ -536,7 +570,13 @@ async function generatePartChunked(p, measures) {
   const sections = p.role?.melodySections || [];
   const canonical = p.melodyAbc ? splitMelodyIntoMeasures(p.melodyAbc) : [];
   const stitched = [];
-  let header = null;
+  // Built server-side once and reused for every section — the model returns
+  // bare measures, so no chunk can contribute a wrong or missing header.
+  const header = partHeader(p, p.instrName);
+  // Key signatures for interval-exact melody validation: the canonical tune is
+  // at concert pitch, the part is written in its own key.
+  const concertFifths = keyFifths(p.key);
+  const writtenFifths = writtenKeyFor(p.key, p.instrName).fifths;
   const structureWarnings = [];
 
   for (const [start, end] of chunkRanges(measures)) {
@@ -561,33 +601,39 @@ async function generatePartChunked(p, measures) {
         ? []
         : [`you wrote ${got} measures but this section must contain EXACTLY ${n} (piece measures ${start}-${end})`];
       const melody = p.melodyAbc && localSections.length > 0
-        ? checkPartMelody(candidate, chunkMelody, localSections, offset).problems
+        ? checkPartMelody(candidate, chunkMelody, localSections, offset, p.timeSignature, concertFifths, writtenFifths).problems
         : [];
       const range = checkPartRange(candidate, p.instrName, offset).problems;
-      return { structure, melody, range, total: structure.length + melody.length + range.length };
+      const bars = checkPartBars(candidate, p.timeSignature, offset).problems;
+      return {
+        structure, melody, range, bars,
+        total: structure.length + melody.length + range.length + bars.length,
+      };
     };
 
-    let abcChunk = cleanAbc(await callAnthropic({ prompt, maxTokens: tokensForMeasures(n) }));
+    let abcChunk = responseToPartAbc(await callAnthropic({ prompt, maxTokens: tokensForMeasures(n) }), header);
     let issues = check(abcChunk);
     if (issues.total > 0) {
-      console.warn(`[part:${p.instrName}] section ${start}-${end} checks failed (${issues.structure.length} structure, ${issues.melody.length} melody, ${issues.range.length} range)`);
+      console.warn(`[part:${p.instrName}] section ${start}-${end} checks failed (${issues.structure.length} structure, ${issues.melody.length} melody, ${issues.range.length} range, ${issues.bars.length} bar-length)`);
       try {
         const fixList = [
           ...issues.structure.map((x) => `- [structure] ${x}`),
+          ...issues.bars.map((x) => `- [bar length] ${x}`),
           ...issues.melody.map((x) => `- [melody] ${x}`),
           ...issues.range.map((x) => `- [range] ${x}`),
         ].join("\n");
-        const retryAbc = cleanAbc(await callAnthropic({
+        const retryAbc = responseToPartAbc(await callAnthropic({
           prompt: `${prompt}
 
 YOUR PREVIOUS ATTEMPT HAD ERRORS, detected by automated checks. Fix EVERY one of them while keeping the rest of your writing:
 ${fixList}
 ${issues.range.length ? "\nRange errors are notes a real player physically cannot play — move that whole passage up or down an octave (or revoice the chord) so it fits the PLAYABLE RANGE; never just clip single notes." : ""}
-Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-${end}), raw ABC only.`,
+${issues.bars.length ? `\nBar-length errors mean those measures hold the wrong number of beats, which drags this part out of time with every other instrument. Re-count each flagged bar: in L:1/8 units a plain letter = 1 (eighth), C2 = 2 (quarter), C3 = 3 (dotted quarter), C4 = 4 (half), C6 = 6 (dotted half), C8 = 8 (whole). Every bar must total exactly ${barUnitsFor(p.timeSignature)}. Fix the rhythm inside the bar — do NOT just delete notes to make the count work.` : ""}
+Return THIS SECTION again as the same JSON object (exactly ${n} measure strings, piece measures ${start}-${end}), nothing else.`,
           maxTokens: tokensForMeasures(n),
-        }));
+        }), header);
         const second = check(retryAbc);
-        if (second.total < issues.total) {
+        if (isBetterAttempt(second, issues)) {
           abcChunk = retryAbc;
           issues = second;
         }
@@ -595,8 +641,6 @@ Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-
         // retry failed — keep the first attempt
       }
     }
-
-    if (!header) header = headerOf(abcChunk);
 
     // Exact-length guarantee per section: pad a short section with explicit
     // whole-measure rests (trim an overrun) so every later section still
@@ -606,8 +650,8 @@ Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-
       const fitted = fitMeasureCount(got, n, p.timeSignature);
       structureWarnings.push(
         fitted.padded
-          ? `measures ${start}-${end}: the section stopped ${fitted.padded} measure(s) early — the gap is written as rests (Regenerate for a full take)`
-          : `measures ${start}-${end}: the section ran ${fitted.trimmed} measure(s) long — trimmed to fit`,
+          ? `measures ${start}-${end}: the section stopped ${fitted.padded} measure(s) early, so the gap is written as rests (Regenerate for a full take)`
+          : `measures ${start}-${end}: the section ran ${fitted.trimmed} measure(s) long and was trimmed to fit`,
       );
       console.warn(`[part:${p.instrName}] section ${start}-${end} length fix: ${got.length} → ${n} measures`);
       stitched.push(...fitted.measures);
@@ -625,12 +669,32 @@ Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-
     abc = enforced.abc;
     console.log(`[part:${p.instrName}] range auto-fix: ${enforced.changes.join("; ")}`);
   }
+
+  // Bar-length repair across the whole assembled part (piece numbering), on
+  // the same asymmetric terms as the non-chunked path: accompaniment bars are
+  // fitted to the meter, melody bars are reported rather than rewritten.
+  const barFix = repairPartBars({
+    measures: partMeasures(abc),
+    timeSignature: p.timeSignature,
+    melodySet: melodyMeasureSet(sections),
+  });
+  if (barFix.repaired.length > 0) {
+    abc = `${headerOf(abc)}\n${stitchBody(barFix.measures)}`;
+    console.warn(`[part:${p.instrName}] bar-length auto-fix: ${barFix.repaired.join("; ")}`);
+  }
+
   const melodyProblems = p.melodyAbc && sections.length > 0
-    ? checkPartMelody(abc, p.melodyAbc, sections).problems
+    ? checkPartMelody(abc, p.melodyAbc, sections, 0, p.timeSignature, concertFifths, writtenFifths).problems
     : [];
   const rangeProblems = checkPartRange(abc, p.instrName).problems;
 
-  const allMelody = [...structureWarnings, ...melodyProblems];
+  const chunkRepairNote = barRepairNote(barFix.repaired);
+  const allMelody = [
+    ...structureWarnings,
+    ...(chunkRepairNote ? [chunkRepairNote] : []),
+    ...barFix.unrepairable,
+    ...melodyProblems,
+  ];
   return {
     abc,
     melodyWarnings: allMelody.length ? allMelody : undefined,
@@ -638,13 +702,6 @@ Output the FULL corrected ABC for THIS SECTION again (exactly measures ${start}-
   };
 }
 
-// Strip any stray fences/prose before the leading X: header.
-function cleanAbc(text) {
-  let t = (text || "").replace(/```[a-z]*/gi, "").replace(/```/g, "").trim();
-  const idx = t.indexOf("X:");
-  if (idx > 0) t = t.slice(idx);
-  return t;
-}
 
 app.listen(PORT, () => {
   console.log(`OrchestraAI proxy on http://localhost:${PORT}  (model: ${MODEL}, key: ${ANTHROPIC_API_KEY ? "set" : "MISSING"})`);
