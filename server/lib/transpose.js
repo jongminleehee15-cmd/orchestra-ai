@@ -86,6 +86,111 @@ export function keyFifths(key) {
 // Strip a numbered-voice suffix: "Trumpet 2" → "Trumpet".
 const baseInstrument = (name) => String(name || "").replace(/\s+\d+$/, "");
 
+// ── Chord symbols in written pitch ───────────────────────────────────────────
+// A transposing part used to be handed the CONCERT chord list and left to
+// transpose it in its head. Live, 3 of 12 transposing parts got that wrong and
+// built their whole accompaniment on the wrong chords (ENGINE_NOTES.md). The
+// symbols are now transposed here, deterministically.
+//
+// By LETTER, so spelling follows the interval: a B-flat part turns F#m into
+// G#m, never Abm. Then, when writtenKeyFor had to respell the written key
+// (concert F# on a B-flat trumpet would be G# major, 8 sharps, and is read in
+// Ab instead), every chord letter is respelled the same way, so the chords
+// match the key signature the player actually sees. That respelling is
+// measured from the concert key AS SPELLED: a library work in concert C#
+// carries chords spelled in C#, while writtenKeyFor has already folded the key
+// to Db, so measuring from the folded key would hand a trumpet reading in Eb
+// the chords D#, G#, B#m. Only the root and any slash bass change; the chord's
+// quality text is copied as-is.
+
+const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
+const LETTER_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+
+// Spell pitch class `pc` on letter index `li` ("C#", "Bb", "Fbb"…), or null
+// when that would need more than a double accidental.
+function spellOn(li, pc) {
+  const letter = LETTERS[((li % 7) + 7) % 7];
+  let acc = (((pc - LETTER_PC[letter]) % 12) + 12) % 12;
+  if (acc > 6) acc -= 12;
+  if (Math.abs(acc) > 2) return null;
+  return letter + (acc > 0 ? "#".repeat(acc) : "b".repeat(-acc));
+}
+
+// "F#" → moved `steps` letters and `semis` semitones, plus `flip` extra
+// letters for a respelled key (+1: sharps became flats, G# → Ab). Never
+// emits a double accidental: a chord from outside the key can land on one
+// (C on a trumpet in concert B, read in Db, would be "Ebb"), and then the
+// nearest single-accidental or natural spelling is used instead ("D").
+function moveNote(note, steps, semis, flip) {
+  const li = LETTERS.indexOf(note[0]);
+  const acc = note.slice(1).replace(/♯/g, "#").replace(/♭/g, "b");
+  const pc = LETTER_PC[note[0]] + (acc === "#" ? 1 : acc === "b" ? -1 : 0);
+  const target = li + steps;
+  for (const letter of [target + flip, target, target - 1, target + 1]) {
+    const s = spellOn(letter, pc + semis);
+    if (s && s.length <= 2) return s;
+  }
+  return null;
+}
+
+// Circle-of-fifths position of a key exactly as spelled, never folded the way
+// parseKey folds it: "C#" = 7, "A#" = 10, "D#m" = 6, "Fb" = -8. Always the
+// same pitch as parseKey's value, so the two differ by a whole multiple of 12
+// fifths, and each 12 is one letter of respelling (C# → Db).
+const LETTER_FIFTHS = { F: -1, C: 0, G: 1, D: 2, A: 3, E: 4, B: 5 };
+function spelledFifths(key) {
+  const raw = String(key || "C").trim();
+  const m = raw.match(/^([A-Ga-g])([#b]?)/);
+  if (!m) return parseKey(key).fifths; // unreadable: whatever parseKey decided
+  const minor = /^\s*m(?!aj)/i.test(raw.slice(m[0].length));
+  const acc = m[2] === "#" ? 7 : m[2] === "b" ? -7 : 0;
+  return LETTER_FIFTHS[m[1].toUpperCase()] + acc - (minor ? 3 : 0);
+}
+
+// How a concert chord symbol moves for this instrument in this concert key:
+// { steps, semis, flip }, or null for a non-transposing instrument.
+function chordMove(concertKey, instrName) {
+  const t = TRANSPOSE[baseInstrument(instrName)];
+  if (!t) return null;
+  // The written key as the chords' own spelling would put it, vs the key the
+  // player reads (writtenKeyFor's). Every 12 fifths between them is a letter.
+  const spelled = spelledFifths(concertKey) + t.fifths;
+  const read = writtenKeyFor(concertKey, instrName).fifths;
+  return {
+    steps: (((4 * t.fifths) % 7) + 7) % 7, // letters: 2nd = 1, 5th = 4, 6th = 5
+    semis: (((7 * t.fifths) % 12) + 12) % 12, // semitones: 2, 7, 9
+    flip: (spelled - read) / 12,
+  };
+}
+
+// One chord symbol ("F#m7/C#") into the instrument's written pitch. Anything
+// that isn't a root-first symbol ("N.C.", junk) is returned unchanged, as is
+// every symbol for a non-transposing instrument.
+export function transposeChordSymbol(symbol, concertKey, instrName) {
+  const move = chordMove(concertKey, instrName);
+  if (!move || typeof symbol !== "string") return symbol;
+  let body = symbol;
+  let bass = "";
+  const slash = symbol.match(/^(.+)\/([A-G][#b♯♭]?)$/);
+  if (slash) { body = slash[1]; bass = slash[2]; }
+  const m = body.match(/^([A-G][#b♯♭]?)(.*)$/);
+  if (!m) return symbol;
+  const root = moveNote(m[1], move.steps, move.semis, move.flip);
+  const newBass = bass ? moveNote(bass, move.steps, move.semis, move.flip) : "";
+  if (!root || (bass && !newBass)) return symbol;
+  return `${root}${m[2]}${bass ? `/${newBass}` : ""}`;
+}
+
+// A whole chord list (one annotation per bar, possibly "G C") in written pitch.
+// Also splits on "|", so a list that arrives as one "D | A | Bm" string works,
+// and "G|C" is never read as G with the quality "|C".
+export function writtenChordsFor(chords, concertKey, instrName) {
+  if (!Array.isArray(chords)) return chords;
+  return chords.map((bar) => (typeof bar === "string"
+    ? bar.split(/(\s+|,|\|)/).map((tok) => (/^[A-G]/.test(tok) ? transposeChordSymbol(tok, concertKey, instrName) : tok)).join("")
+    : bar));
+}
+
 // For a given concert key + instrument, return how the part should be written.
 //   { writtenKey, label, interval, transposes }
 // Non-transposing (C) instruments read in the concert key with transposes:false.

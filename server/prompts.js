@@ -1,5 +1,5 @@
 import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures, barUnitsFor } from "./lib/abcMelody.js";
-import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
+import { writtenKeyFor, conventionalKey, writtenChordsFor } from "./lib/transpose.js";
 import { writtenRangeInfo } from "./lib/ranges.js";
 import { styleBlock } from "./lib/styles.js";
 import { suggestedSections } from "./lib/planCheck.js";
@@ -358,10 +358,14 @@ export function buildPartPrompt({
     : "";
 
   // Transposing instruments read in a different key than concert pitch.
+  // Drop only the word "up", keeping any note after it: the Tenor Sax's
+  // "(an octave-and-a-tone in sound)" is what tells the model about the octave.
+  const intervalName = transposes ? interval.replace(/ up\b/, "") : "";
   const transposeBlock = transposes
     ? `TRANSPOSING INSTRUMENT — ${instrName} is a transposing instrument (${label}); the concert key is ${concertKey}:
 - Write every pitch of this part in ${writtenKey}. (The K:${writtenKey} key signature is attached for you — you write only the notes.)
-- Every pitch you write sounds ${interval.replace(/ up.*/, "")} LOWER than written, so transpose all notes (melody excerpts included) UP by ${interval} from the concert pitches in the reference. Keep shapes and rhythms identical — only the written pitch/key changes.
+- Every pitch you write sounds ${intervalName} LOWER than written. The MAIN MELODY and the melody excerpts are at CONCERT pitch: transpose each of those notes UP by ${intervalName}. Keep shapes and rhythms identical — only the written pitch/key changes.
+- The CHORDS are ALREADY in your written key of ${writtenKey} (transposed for you). Build your accompaniment directly from them and do NOT transpose them again.
 - Use the ${writtenKey} key signature and spell accidentals conventionally so the part is easy to read.
 `
     : "";
@@ -371,7 +375,13 @@ export function buildPartPrompt({
 SHARED ARRANGEMENT REFERENCE (every part is built from this — do not contradict it):
 MAIN MELODY (concert key of ${concertKey}, ${timeSignature}, concert pitch, L:1/8):
 ${melodyAbc}
-CHORDS (one per measure): ${Array.isArray(chords) ? chords.join(" | ") : chords || ""}
+${transposes
+    // Transposing parts get the chords in WRITTEN pitch, converted in code
+    // (transpose.js), instead of transposing concert symbols in their head.
+    // A chord list that isn't an array is transposed too (as one string), so
+    // the "ALREADY transposed" label is never put on concert chords.
+    ? `CHORDS AS YOU READ THEM (one per measure, ALREADY transposed into your written key of ${writtenKey}; do NOT transpose them again): ${Array.isArray(chords) ? writtenChordsFor(chords, key, instrName).join(" | ") : writtenChordsFor([String(chords || "")], key, instrName)[0]}`
+    : `CHORDS (one per measure): ${Array.isArray(chords) ? chords.join(" | ") : chords || ""}`}
 
 USING THE REFERENCE:
 - In measures where YOU carry the melody, play THE EXACT MELODY shown below${transposes ? `, transposed ${interval} into your written key of ${writtenKey}` : ", transposed only as needed to sit in your instrument's range"} — keep every pitch and rhythm recognizable (light ornamentation OK), do NOT substitute a different tune.

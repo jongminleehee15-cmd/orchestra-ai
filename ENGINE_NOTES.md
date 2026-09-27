@@ -726,22 +726,60 @@ chord AND a 2nd or 7th, in any octave, from the tune.
   the chord change) or borderline. No clear false alarm. A dominant 7th held
   against the tune for half a bar is a known risk the rule allows.
 
-### Mis-transposed accompaniment: the largest defect in the data (not fixed)
+### Mis-transposed accompaniment: fixed by handing over written-pitch chords
 
-In 3 of 11 transposing-part runs, the accompaniment was built from the concert
-chord symbols with the WRONG transposition: both runs of the Ode to Joy
-Clarinet, and the Canon Trumpet in the no-context rerun (it was fine with
-context, so this is not caused by context). The Canon Trumpet wrote each
-concert chord a 5th up (D → A major, G → E major), a horn's transposition
-rather than a B-flat instrument's 2nd, and its key signature turned minor
-chords major. Melody bars are unaffected: the prompt hands them exact notes.
-Detected by reading each part's accompaniment with and without the shift:
-correctly written parts fit the chords at 47-81% shifted vs 18-44% unshifted;
-these three fit better unshifted or not at all.
+In 3 of 12 transposing-part runs, the accompaniment was built on the wrong
+chords: both runs of the Ode to Joy Clarinet, and the Canon Trumpet in the
+no-context rerun (it was fine with context, so context did not cause it).
+*(Corrected: first recorded as "3 of 11", and the Trumpet as writing "each
+chord a 5th up, a horn's transposition". The data does not support a single
+interval: D → A is a 5th, G → E a 6th, and Bm → B kept its root with the key
+signature turning it major. The model simply wrote wrong chords in the written
+key.)* Melody bars were unaffected: the prompt hands them exact notes.
+Detected by reading each part's accompaniment with the correct shift,
+unshifted, and shifted twice: correctly written parts fit best shifted.
 
-Proposed fix, not built: give a transposing part its chord list already in
-WRITTEN pitch (a deterministic transposition of the symbols), so the model
-never transposes chords in its head. Needs a live run to verify.
+**Fix (`writtenChordsFor` in transpose.js, 2026-09-26).** A transposing part
+is no longer given the concert chord list. It gets "CHORDS AS YOU READ THEM",
+transposed in code into its written key, and is told not to transpose them
+again; the instruction to transpose concert pitch now names only the melody.
+Symbols move by letter, so spelling follows the interval (a B-flat part turns
+F#m into G#m). When the written key had to be respelled (concert F# on a
+B-flat part reads in Ab, not G#), chord letters are respelled with it, and a
+chord from outside the key never gets a double accidental (C there is written
+D, not Ebb, a case the exhaustive test caught). The respelling is measured
+from the concert key as SPELLED, not as folded: a library work in concert C#
+keeps C#-spelled chords while the written key is folded (a trumpet reads in
+Eb), and measuring from the folded key had given that trumpet D#, G#, B#m.
+*(Found in review before commit, 2026-09-26.)* Tested over every root
+spelling × 27 qualities × slash basses × 7 transposing instruments × 34
+concert keys (the 24 conventional ones plus C#, G#, D#, A#, Cb, Fb, G#m, D#m,
+A#m, Abm): each written symbol parses to exactly the original chord moved by
+the instrument's interval. For each key's own diatonic chords, every written
+root must also be the note the player's key signature gives that letter.
+Non-transposing prompts are byte-identical to before (checked against HEAD).
+Residual: the respelling follows the key's spelling, so a source whose chords
+are spelled against its own key (key "Db", chords C#) still reads awkwardly;
+the pitches stay right.
+
+**Live-verified 2026-09-26**, against success criteria written down BEFORE the
+run, each part regenerated on its saved plan with no context:
+
+| Part | Before | After |
+|---|---|---|
+| Ode to Joy Clarinet, 4 runs | wrong 2 of 2 (38-39% fit) | correct 4 of 4 (78-88%) |
+| Canon Trumpet, 3 runs | wrong 1 of 3 | correct 3 of 3 (69-100%) |
+| Controls: Ode Horn, Canon Alto Sax, Yankee Clarinet | correct | still correct (75-100%) |
+
+Double transposition, the risk of handing over pre-transposed chords, never
+fit best. The Ode Clarinet's chord flags fell from 13-17 of 25 to 0-3. n is at
+most 4 per part: strong evidence, not proof.
+
+**Still open, a different problem:** in all 4 Ode runs the Clarinet's MELODY
+bars 19-24 (melody composed to extend the piece) failed their first attempt,
+drifting back toward the familiar Ode to Joy tune, and 2 runs still carried
+5-6 melody warnings after the retry. Surfaced to the user as warnings; not
+addressed by this fix.
 
 Not verified in a browser: the score view was not loaded in dev. The client
 build is clean, and `voicing.js` was run end to end in Node over every saved

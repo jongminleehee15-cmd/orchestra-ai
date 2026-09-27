@@ -11,7 +11,7 @@ not pushed" line is no longer true). Treat it as history, not current state.
 ## Commands
 
 ```bash
-npm test                  # 131 tests, all pure/offline. Must stay green.
+npm test                  # 138 tests, all pure/offline. Must stay green.
 npm run dev               # Vite (5173) + API (3001)
 npm run build
 ```
