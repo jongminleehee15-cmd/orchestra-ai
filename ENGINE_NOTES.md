@@ -943,7 +943,7 @@ All numbers below share the baseline's 12 plans: "baseline" (10a45ae),
 | Same 12 plans | baseline | head | melodywritten |
 |---|---|---|---|
 | Transposing parts' melody bars wrong (either check) | 15/136, 11.0% | 43/136, 31.6% | 14/136, 10.3% |
-| Other parts' melody bars wrong (prompts unchanged: noise) | 3.9% | 2.6% | 3.3% |
+| Other parts' melody bars wrong (the control, see below) | 3.9% | 2.6% | 3.3% |
 | Transposition suspects | 6 | 2 | 1 |
 | Accompaniment off-chord | 9.8% | 7.8% | 6.4% |
 
@@ -955,7 +955,10 @@ wrong pitch that intervals pass). Likely mechanism: the grid and chords came
 in written pitch while the melody still came at concert pitch with orders to
 transpose, a mixed prompt. The melody change was measured against criteria
 committed before its run (27f3524's message): transposing melody errors fell
-21.3 points against 0.7 points of noise, guards held. **Kept.** But read the
+21.3 points against a 0.7-point change in the other parts, guards held.
+**Kept.** (That control is not pure noise, as the criteria called it: the
+other parts' own prompt text is unchanged, but with context on they also see
+the transposing parts' new output in their grid. Either way it moved 0.7.) But read the
 net honestly: against the original baseline, transposing melody accuracy is
 back to where it was (11.0% to 10.3%), not better; the gains that remain are
 transposition suspects (6 to 1), off-chord bars (9.8% to 6.4%) and melody
