@@ -32,7 +32,7 @@ export default function ScoreView({
   // Cross-part orchestration checks (register crowding, unison doubling) —
   // only meaningful once there's more than one finished part to compare.
   // Re-derived on every render, same as fullScoreAbc.
-  const voicingWarnings = doneCount >= 2 ? analyzeVoicing(scoreParts, melodyPlan) : [];
+  const voicingWarnings = doneCount >= 2 ? analyzeVoicing(scoreParts, melodyPlan, { key: songKey, timeSignature: timeSig }) : [];
 
   const allDisabled = anyLoading || doneCount === totalCount || planBusy;
 
@@ -196,7 +196,7 @@ export default function ScoreView({
 
       {voicingWarnings.length > 0 && (
         <div style={{ marginTop: "20px", padding: "10px 12px", background: "rgba(200,160,80,0.08)", border: `1px solid ${S.gold}44`, borderRadius: "4px", fontSize: "12px", color: S.gold }}>
-          ⚠ {voicingWarnings.length} orchestration note{voicingWarnings.length > 1 ? "s" : ""} across parts (register crowding or unison doubling). Informational, not blocking.
+          ⚠ {voicingWarnings.length} orchestration note{voicingWarnings.length > 1 ? "s" : ""} across parts (register crowding, unison doubling, dynamic balance, or a part rubbing against the melody). Informational, not blocking.
           <details style={{ marginTop: "4px" }}>
             <summary style={{ cursor: "pointer", fontSize: "11px", color: S.muted }}>details</summary>
             <ul style={{ margin: "6px 0 0", paddingLeft: "18px", color: S.muted, fontSize: "11px" }}>

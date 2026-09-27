@@ -594,10 +594,11 @@ A chord that shares NO tones with the written one is always caught. A chord
 that shares tones (V, IV, vi, iii over I) passes or fails depending on which
 shared note the rhythm happens to hold, so this detects lines that are mostly
 outside the chord, not wrong chords in general. It also does not compare a
-part with the MELODY: a line moving in parallel seconds under the tune is only
-caught when it also misses the chord (Trumpet bars 10-11 below were; the same
-clash in even eighths would score at least 3/8 and pass). That needs a
-separate part-against-melody check.
+part with the MELODY: a line shadowing the tune in parallel 2nds or 7ths is
+only caught here when it also misses the chord (Trumpet bars 10-11 below were;
+the same clash in even eighths would score at least 3/8 and pass). The
+separate part-against-melody check is `findMelodyClashes` (§Parts heard
+together, below).
 
 ### Live results (2026-09-26, three runs)
 
@@ -617,8 +618,12 @@ Measured on real output, verified bar by bar against the melody and chords.
     instead of the plan's extension melody. The melody check caught 5 of those
     6 bars; bar 20 slipped through because its intervals match at the wrong
     pitch level (the interval-exact design boundary, see above).
-  - **Trumpet** bars 10-11 ran a whole step under the melody in parallel
-    seconds; **Alto Sax** bars 1, 2, 4 clash with it.
+  - **Trumpet** bars 10-11 shadow the melody in parallel 7ths, a 7th ABOVE
+    the Alto Sax carrying it. *(Corrected 2026-09-26: first written as "a
+    whole step under the melody in parallel seconds". That compared against
+    the canonical melody's octave; the Alto Sax plays the tune an octave
+    lower, and the sounding interval is a 7th. Same clash class, wrong
+    description.)* **Alto Sax** bars 1, 2, 4 clash with the melody.
   - Remaining false alarm: **Violin 2 bar 19**, a parallel-sixths line under the
     tune. Bars 9 and 11 (an E minor shape over an A chord) are borderline.
 - **Yankee Doodle, 16 bars, Playful/Moderate** (Flute, Clarinet, Viola, Tuba),
@@ -645,6 +650,102 @@ wrong, and nothing checks the extension's melody against its chords.
 The chords themselves are often the model's (`harmonizeWork`, the free-text
 blueprint, the extension), so this checks consistency with the plan, not that
 the plan's harmony is good.
+
+## Parts heard together (`server/lib/ensemble.js`, 2026-09-26)
+
+Two changes that read every part at its SOUNDING pitch (octave included, via
+`WRITTEN_SHIFT` from ranges.js, durations from `scanMeasure`). The module is
+imported by the browser (`src/lib/voicing.js`), so it must stay free of
+anything Node-only; a build of the client contains no `process.env` or
+Anthropic code (checked by grepping the bundle).
+
+### 1. Each part is written hearing the finished parts
+
+`/api/part` accepts `contextParts` (the other finished parts) and
+`instrumentRoles`. The prompt gets an ENSEMBLE SO FAR grid: bar by bar, every
+finished part as sounding note names ("F#5 q, E5 e"), the melody carrier
+marked, and the canonical tune in bars whose carrier is not written yet. It is
+converted in code so the model never transposes another part in its head.
+Without context the prompt is byte-identical to before (72 prompts compared
+against the previous commit).
+
+Client: "Generate All" ran its loop inside one render's closure, so it could
+never see parts finished during the loop. Every part update now goes through
+`updateParts`, which keeps a ref current synchronously; `generatePart` reads
+the part and its context from the ref. `/api/part` alone takes bodies up to
+512kb (every other route keeps 64kb, verified over HTTP); the client trims
+context to 400k characters first, and the server drops malformed entries
+instead of failing (`sanitizeContextParts`, `fitContext`, both tested).
+
+**Evidence that it helps: none yet that would survive a second run.** A/B on
+the three saved plans (same melody, chords and roles; parts generated one at a
+time, in order), one run per song, plus one no-context rerun of Canon to see
+run-to-run variance:
+
+| Run | Chord flags | Melody clashes | Dynamics warnings | Notes |
+|---|---|---|---|---|
+| Canon, first run / no-context rerun / **context** | 5 / 8 / **2** | 8 / 6 / **3** | 4 / 5 / 8 | only clear gain, beyond the no-context spread |
+| Yankee Doodle, first / **context** | 3 / **2** | 4 / **2** | 3 / 4 | Viola copied a Clarinet rhythm from the grid and dropped a rest: 12 short bars, padded and reported |
+| Ode to Joy, first / **context** | 16 / **20** | 5 / **21** | 8 / 8 | 17 of 21 clashes are the Clarinet, broken in both runs; says nothing about context |
+
+- **Contamination is real.** In the Ode context run the French Horn was
+  written after the broken Clarinet, with it in its context, and went from 0
+  melody clashes to 4. Context can spread one bad part into later ones.
+- **Dynamics are not evidence either way.** `describeBar` drops dynamic marks,
+  so the grid shows none and cannot have changed them. Candidate follow-up:
+  include each part's current dynamic in its row.
+
+### 2. Melody clashes (`findMelodyClashes`)
+
+Every non-melody part against the part that ACTUALLY carries the melody in
+each bar, shown in the orchestration panel. Informational, like the rest of
+`analyzeVoicing`. A bar is flagged when, for at least half of the time both
+sound (and at least a quarter note of it), the part's note is OUTSIDE the
+chord AND a 2nd or 7th, in any octave, from the tune.
+
+- **Interval classes, not absolute sizes.** The first version used an absolute
+  set (2nds, M7, m9). The live Trumpet it was built for was then missed: it
+  sits a 7th above the Alto Sax, which plays the tune an octave below the
+  canonical melody's octave. The octave a carrier uses is its own choice.
+- **Only dissonance the part creates counts.** Without the chord-tone filter,
+  most flags were the melody's OWN passing tones against an accompaniment
+  sitting correctly on a chord tone (a Tuba on the root under Yankee Doodle's
+  passing A). 36 flags on the three first runs became 17 with the filter.
+- **Both derivations are tested exhaustively.** Parallel unisons, 3rds, 6ths
+  and octaves are never flagged, over any diatonic triad (their classes are
+  never dissonant). A stepwise tune shadowed in parallel 2nds or 7ths is
+  always flagged: any 4 or 8 consecutive scale steps hold at most half of
+  their notes in one triad, so the shadow is off the chord at least half the
+  time.
+- The live pins (Trumpet bars 10-11 flagged; Trumpet 14 and Violin 2 bar 19
+  pass) come from the data that shaped the rule. They pin it; they don't
+  validate it.
+- On the three first runs, all 17 remaining flags were judged by hand: clear
+  clashes (the broken Clarinet, the Trumpet and Flute shadowing in 7ths, a
+  Flute in parallel 9ths, Violin 2 in parallel 2nds, a Bassoon not following
+  the chord change) or borderline. No clear false alarm. A dominant 7th held
+  against the tune for half a bar is a known risk the rule allows.
+
+### Mis-transposed accompaniment: the largest defect in the data (not fixed)
+
+In 3 of 11 transposing-part runs, the accompaniment was built from the concert
+chord symbols with the WRONG transposition: both runs of the Ode to Joy
+Clarinet, and the Canon Trumpet in the no-context rerun (it was fine with
+context, so this is not caused by context). The Canon Trumpet wrote each
+concert chord a 5th up (D → A major, G → E major), a horn's transposition
+rather than a B-flat instrument's 2nd, and its key signature turned minor
+chords major. Melody bars are unaffected: the prompt hands them exact notes.
+Detected by reading each part's accompaniment with and without the shift:
+correctly written parts fit the chords at 47-81% shifted vs 18-44% unshifted;
+these three fit better unshifted or not at all.
+
+Proposed fix, not built: give a transposing part its chord list already in
+WRITTEN pitch (a deterministic transposition of the symbols), so the model
+never transposes chords in its head. Needs a live run to verify.
+
+Not verified in a browser: the score view was not loaded in dev. The client
+build is clean, and `voicing.js` was run end to end in Node over every saved
+run.
 
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 

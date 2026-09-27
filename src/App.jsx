@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { S, SERIF, DISPLAY, genreColor } from "./lib/constants.js";
 import { generateBlueprint, generateInstrumentABC } from "./api/client.js";
 import { getHistory, newHistoryId, saveArrangement, deleteArrangement, clearAllArrangements } from "./lib/history.js";
@@ -47,6 +47,18 @@ export default function App() {
 
   // Score
   const [scoreParts, setScoreParts] = useState([]);
+  // The latest parts, readable synchronously. Every part is now written
+  // against the parts already finished, and "Generate All" runs its loop
+  // inside ONE render's closure, where `scoreParts` never changes: without
+  // this, each part would be sent the parts as they were when the loop
+  // started, i.e. none. EVERY write goes through updateParts so the ref and
+  // the state can never disagree.
+  const partsRef = useRef([]);
+  function updateParts(next) {
+    const value = typeof next === "function" ? next(partsRef.current) : next;
+    partsRef.current = value;
+    setScoreParts(value);
+  }
   const [melodyPlan, setMelodyPlan] = useState(null);
   const [planStatus, setPlanStatus] = useState("idle"); // idle|loading|done|error
   const [showScore, setShowScore] = useState(false);
@@ -100,7 +112,7 @@ export default function App() {
     setPlanStatus("loading");
     setCurrentHistoryId(newHistoryId());
     const voices = expandVoices(selectedInstrs);
-    setScoreParts(voices.map((v) => ({ instrName: v.name, baseName: v.base, status: "idle", abcText: null, errMsg: null })));
+    updateParts(voices.map((v) => ({ instrName: v.name, baseName: v.base, status: "idle", abcText: null, errMsg: null })));
     setViewIdx(0);
     setShowScore(true);
     setTab("score");
@@ -129,9 +141,15 @@ export default function App() {
   // `plan` defaults to the current melodyPlan state, but callers (e.g. the manual
   // melody editor) can pass a freshly-edited plan to avoid a stale-state read.
   async function generatePart(idx, plan = melodyPlan) {
-    const part = scoreParts[idx];
+    const part = partsRef.current[idx];
     if (!part || part.status === "loading") return;
-    setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "loading", abcText: null, errMsg: null } : p)));
+    // Every OTHER part that is already finished, read from the ref so it is
+    // current even inside "Generate All"'s loop. This part is written
+    // hearing them (see server/lib/ensemble.js).
+    const contextParts = partsRef.current
+      .filter((p, i) => i !== idx && p.status === "done" && p.abcText)
+      .map((p) => ({ instrName: p.instrName, abc: p.abcText }));
+    updateParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "loading", abcText: null, errMsg: null } : p)));
     const otherInstruments = expandVoices(selectedInstrs).map((v) => v.name).join(", ");
     try {
       const { abc, melodyWarnings, rangeWarnings, harmonyWarnings } = await generateInstrumentABC({
@@ -142,17 +160,21 @@ export default function App() {
         role: plan?.instrumentRoles?.[part.instrName] || null,
         melodyAbc: plan?.melodyAbc,
         chords: plan?.chords,
+        instrumentRoles: plan?.instrumentRoles || null,
+        contextParts,
       });
-      setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc, melodyWarnings, rangeWarnings, harmonyWarnings } : p)));
+      updateParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc, melodyWarnings, rangeWarnings, harmonyWarnings } : p)));
     } catch (e) {
-      setScoreParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "error", errMsg: e.message } : p)));
+      updateParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "error", errMsg: e.message } : p)));
     }
   }
 
+  // One part at a time, in order, so each is written against every part
+  // finished before it. Status is read from the ref, never this closure.
   async function generateAll() {
-    for (let i = 0; i < scoreParts.length; i++) {
-      if (scoreParts[i].status === "idle" || scoreParts[i].status === "error") {
-        // re-read latest status via closure-safe guard inside generatePart
+    for (let i = 0; i < partsRef.current.length; i++) {
+      const status = partsRef.current[i]?.status;
+      if (status === "idle" || status === "error") {
         await generatePart(i);
       }
     }
@@ -163,16 +185,18 @@ export default function App() {
   async function applyMelodyEdit(newMelodyAbc) {
     const newPlan = { ...(melodyPlan || {}), melodyAbc: newMelodyAbc };
     setMelodyPlan(newPlan);
-    setScoreParts((prev) => prev.map((p) => ({ ...p, status: "idle", abcText: null, errMsg: null })));
+    updateParts((prev) => prev.map((p) => ({ ...p, status: "idle", abcText: null, errMsg: null })));
     setViewIdx(0);
-    const count = scoreParts.length;
+    // The reset above cleared every part in the ref too, so no part written
+    // against the OLD melody is ever sent as context for the new one.
+    const count = partsRef.current.length;
     for (let i = 0; i < count; i++) {
       await generatePart(i, newPlan); // instrName is stable; pass the edited plan explicitly
     }
   }
 
   function resetArrangement() {
-    setScoreParts([]);
+    updateParts([]);
     setShowScore(false);
     setMelodyPlan(null);
     setPlanStatus("idle");
@@ -198,7 +222,7 @@ export default function App() {
     setStyle(entry.style || "Cinematic");
     setDensity(entry.density || "Full");
     setTempoFeel(entry.tempoFeel || "Moderate");
-    setScoreParts(entry.scoreParts || []);
+    updateParts(entry.scoreParts || []);
     setMelodyPlan(entry.melodyPlan || null);
     // Never restore into "loading" — if the snapshot was taken mid-fetch,
     // there's no request in flight anymore to resolve it, which would leave

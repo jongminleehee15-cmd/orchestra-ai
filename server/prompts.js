@@ -3,6 +3,7 @@ import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
 import { writtenRangeInfo } from "./lib/ranges.js";
 import { styleBlock } from "./lib/styles.js";
 import { suggestedSections } from "./lib/planCheck.js";
+import { renderEnsembleContext } from "./lib/ensemble.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SONG SEARCH
@@ -310,6 +311,9 @@ export function buildPartPrompt({
   // Long pieces are generated in sections: { start, end, prevTail } — write
   // ONLY piece measures start..end; prevTail is how the previous section ended.
   chunk = null,
+  // Parts already finished ([{ instrName, abc }]) and the plan's roles, so
+  // this part is written hearing the others. Absent → the prompt is unchanged.
+  contextParts = null, instrumentRoles = null,
 }) {
   const writeCount = chunk ? chunk.end - chunk.start + 1 : measures;
   // The arrangement is stored at concert pitch; work out the key THIS instrument
@@ -397,6 +401,25 @@ ${chunk.prevTail ? `- Your part so far ends with (piece measure${chunk.start > 2
 `
     : "";
 
+  // The parts already written, bar by bar at SOUNDING pitch, so this part is
+  // composed against what the others actually play rather than blind to it.
+  const ensembleGrid = renderEnsembleContext({
+    contextParts, forInstr: instrName, instrumentRoles, melodyAbc,
+    concertKey: key, timeSignature,
+    from: chunk ? chunk.start : 1, to: chunk ? chunk.end : measures,
+  });
+  const ensembleBlock = ensembleGrid
+    ? `
+ENSEMBLE SO FAR — the parts already written, bar by bar, as they SOUND (concert pitch; C4 = middle C; lengths: s sixteenth, e eighth, q quarter, h half, w whole, "." dotted):
+${ensembleGrid}
+
+Write your part to sound WITH these:
+- Against the MELODY, do not move in 2nds, major 7ths or minor 9ths with it (a brief passing note is fine); prefer 3rds, 6ths, octaves and contrary motion.
+- Do not copy another part's line; fill the registers and rhythms the others leave open, and answer them rather than collide.
+- These are SOUNDING pitches. Your own notes are still written exactly as instructed in this prompt${transposes ? `: in ${writtenKey}, ${interval.replace(/ up.*/, "")} above how they sound` : ""}.
+`
+    : "";
+
   return `You are a professional music engraver. Output ONLY valid ABC notation for the ${instrName} part.
 
 SONG: "${songTitle}"${songArtist ? ` by ${songArtist}` : ""}${songGenre ? ` (${songGenre})` : ""}
@@ -404,7 +427,7 @@ ${songNotes ? `NOTES: ${songNotes}` : ""}
 KEY: concert ${concertKey}${transposes ? ` — you READ in ${writtenKey} (${label})` : ""} | TIME: ${timeSignature} | TEMPO: ${bpm} BPM | STYLE: ${style} | DENSITY: ${density} | FEEL: ${tempoFeel}
 FULL ENSEMBLE: ${otherInstruments}
 TOTAL MEASURES: ${measures}
-${chunkBlock}${sharedContext}${excerptBlock}
+${chunkBlock}${sharedContext}${excerptBlock}${ensembleBlock}
 ${roleBlock}
 
 ${arrangingBlock}

@@ -21,7 +21,7 @@ import { checkPartRange, enforceRange } from "./lib/ranges.js";
 import { partHeader, responseToPartAbc } from "./lib/partFormat.js";
 import { writtenKeyFor, keyFifths } from "./lib/transpose.js";
 import { CHUNK_THRESHOLD, CHUNK_SIZE, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount, isBetterAttempt, repairPartBars, barRepairNote } from "./lib/chunking.js";
-import { ALLOWED_MEASURES, MAX_INSTRUMENTS, isValidMeasures } from "./lib/limits.js";
+import { ALLOWED_MEASURES, MAX_INSTRUMENTS, isValidMeasures, sanitizeContextParts, PART_BODY_LIMIT } from "./lib/limits.js";
 import { repairMelodyCoverage } from "./lib/planCheck.js";
 import { checkPartHarmony, harmonyWarnings } from "./lib/harmony.js";
 
@@ -34,7 +34,12 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Body size cap so a stranger can't post a giant payload (Phase 2 hardening).
-app.use(express.json({ limit: "64kb" }));
+// /api/part alone gets a larger cap: it now carries the parts already written
+// as context (up to 15 parts × 128 bars of decorated ABC). Every other route
+// keeps the 64kb limit.
+const jsonSmall = express.json({ limit: "64kb" });
+const jsonPart = express.json({ limit: PART_BODY_LIMIT });
+app.use((req, res, next) => (req.path === "/api/part" ? jsonPart : jsonSmall)(req, res, next));
 // Locked to the deployed frontend — app.use(cors()) was wide open, letting
 // anyone who found the backend URL spend the API budget from a browser.
 app.use(cors({ origin: FRONTEND_ORIGIN }));
@@ -436,7 +441,16 @@ function cleanMelodyLine(text) {
 
 // ── Single instrument part ───────────────────────────────────────────────────
 app.post("/api/part", handler(async (req, res) => {
-  const p = req.body || {};
+  const body = req.body || {};
+  const p = {
+    ...body,
+    contextParts: sanitizeContextParts(body.contextParts, body.instrName),
+    instrumentRoles: body.instrumentRoles && typeof body.instrumentRoles === "object" && !Array.isArray(body.instrumentRoles)
+      ? body.instrumentRoles : null,
+  };
+  if (p.contextParts) {
+    console.log(`[part:${p.instrName}] written against ${p.contextParts.length} finished part(s): ${p.contextParts.map((c) => c.instrName).join(", ")}`);
+  }
   if (!p.instrName) throw Object.assign(new Error("instrName is required"), { status: 400 });
   if (!isValidMeasures(p.measures)) {
     throw Object.assign(new Error(`measures must be one of: ${ALLOWED_MEASURES.join(", ")}`), { status: 400 });

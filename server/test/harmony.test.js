@@ -176,7 +176,7 @@ test("live regression bars (2026-09-26): real clashes stay flagged, scale runs p
     ["Clarinet", "!p!(A,2 E2 A2 c2)", "D"], // whole part a fourth off the harmony
     ["Clarinet", "!p!(^c2 e2 ^c2 e2)", "A"],
     ["Clarinet", "!mp!(^c2 e2 ^c2 A2)", "A"],
-    ["Trumpet", "d2cB AB cA", "Bm"], // a step under the melody: parallel seconds
+    ["Trumpet", "d2cB AB cA", "Bm"], // shadows the melody in parallel 7ths (a 7th above the Alto Sax)
     ["Trumpet", "B2AG FG AF", "G"],
     ["Alto Sax", "!p!z4 D2E2", "D A"],
     ["Alto Sax", "F4 E2D2", "Bm F#m"],

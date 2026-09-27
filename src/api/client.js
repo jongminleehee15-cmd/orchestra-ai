@@ -7,6 +7,8 @@
 // backend, so these become real cross-origin requests — that's required for
 // the backend's CORS allowlist (FRONTEND_ORIGIN) to actually be enforced by
 // the browser; see README "Deployment".
+import { fitContext } from "../lib/context.js";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 async function postJson(path, body) {
@@ -83,8 +85,12 @@ export async function generateBlueprint(params) {
 // rather than rewritten. rangeWarnings: notes still outside the instrument's
 // realistic playable range. harmonyWarnings: accompaniment bars whose notes
 // mostly don't belong to that bar's chord (informational, never auto-fixed).
+//
+// contextParts: the parts already finished, so this one is written hearing
+// them; trimmed to the server's body budget by fitContext.
 export async function generateInstrumentABC(params) {
-  const { abc, melodyWarnings, rangeWarnings, harmonyWarnings } = await postJson("/api/part", params);
+  const body = { ...params, contextParts: fitContext(params.contextParts) };
+  const { abc, melodyWarnings, rangeWarnings, harmonyWarnings } = await postJson("/api/part", body);
   return {
     abc,
     melodyWarnings: melodyWarnings || [],

@@ -7,6 +7,7 @@
 
 import { getMeta } from "./constants.js";
 import { splitMeasures } from "./melodyCheck.js";
+import { findMelodyClashes } from "../../server/lib/ensemble.js";
 
 const BASE_ST = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 
@@ -223,12 +224,36 @@ function findDynamicImbalance(parts, melodyPlan) {
   return warnings;
 }
 
+// A non-melody part moving in 2nds (or a major 7th / minor 9th) against the
+// melody carrier for most of a bar. Judged at sounding pitch with the
+// server's own parser (server/lib/ensemble.js), so key signatures,
+// accidentals, tuplets and transposing instruments are read exactly as the
+// part checks read them.
+function findClashes(parts, melodyPlan, meta) {
+  if (!meta?.key || !meta?.timeSignature) return [];
+  return findMelodyClashes({
+    parts: parts.map((p) => ({ instrName: p.instrName, abc: p.abcText })),
+    instrumentRoles: melodyPlan?.instrumentRoles,
+    chords: melodyPlan?.chords,
+    concertKey: meta.key,
+    timeSignature: meta.timeSignature,
+  }).map((c) =>
+    `measure ${c.measure}: ${c.instrName} sits a 2nd (or a major 7th or minor 9th) away from ${c.carrier}'s melody for ${Math.round(c.share * 100)}% of the bar, so the two lines will rub; listen, and Regenerate ${c.instrName} if it sounds wrong`,
+  );
+}
+
 // Run every ensemble-level check once at least two parts are finished.
 // `parts` needs { instrName, baseName, abcText } (scoreParts shape from
 // App.jsx); melodyPlan supplies instrumentRoles so melody measures are
-// exempted from both checks.
-export function analyzeVoicing(parts, melodyPlan) {
+// exempted. meta = { key, timeSignature } of the arrangement (concert key),
+// needed to read every part at sounding pitch for the melody-clash check.
+export function analyzeVoicing(parts, melodyPlan, meta = null) {
   const usable = parts.filter((p) => p.status === "done" && p.abcText);
   if (usable.length < 2) return [];
-  return [...findMud(usable, melodyPlan), ...findUnison(usable, melodyPlan), ...findDynamicImbalance(usable, melodyPlan)];
+  return [
+    ...findMud(usable, melodyPlan),
+    ...findUnison(usable, melodyPlan),
+    ...findDynamicImbalance(usable, melodyPlan),
+    ...findClashes(usable, melodyPlan, meta),
+  ];
 }
