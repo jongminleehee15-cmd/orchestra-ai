@@ -166,6 +166,18 @@ export default function ScoreView({
         </div>
       )}
 
+      {melodyPlan?.planWarnings?.length > 0 && (
+        <div style={{ marginBottom: "12px", padding: "10px 12px", background: "rgba(200,160,80,0.08)", border: `1px solid ${S.gold}44`, borderRadius: "4px", fontSize: "12px", color: S.gold }}>
+          ⚠ The plan for who carries the melody had {melodyPlan.planWarnings.length} problem{melodyPlan.planWarnings.length > 1 ? "s" : ""}, fixed automatically so every measure has exactly one melody carrier. Each part card shows where it now carries the melody.
+          <details style={{ marginTop: "4px" }}>
+            <summary style={{ cursor: "pointer", fontSize: "11px", color: S.muted }}>details</summary>
+            <ul style={{ margin: "6px 0 0", paddingLeft: "18px", color: S.muted, fontSize: "11px" }}>
+              {melodyPlan.planWarnings.map((w, i) => <li key={i}>{w}</li>)}
+            </ul>
+          </details>
+        </div>
+      )}
+
       <div style={{ display: "grid", gap: "10px" }}>
         {scoreParts.map((part, idx) => (
           <PartCard

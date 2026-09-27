@@ -97,6 +97,17 @@ export default function PartCard({ part, idx, isActive, role, S, songLabel, onSe
                   </details>
                 </div>
               )}
+              {part.harmonyWarnings?.length > 0 && (
+                <div style={{ padding: "10px 12px", marginBottom: "8px", background: "rgba(200,160,80,0.08)", border: `1px solid ${S.gold}44`, borderRadius: "4px", fontSize: "12px", color: S.gold }}>
+                  ⚠ Some accompaniment bars mostly play notes outside their chord. Informational: listen to them, and Regenerate if they sound wrong.
+                  <details style={{ marginTop: "4px" }}>
+                    <summary style={{ cursor: "pointer", fontSize: "11px", color: S.muted }}>details</summary>
+                    <ul style={{ margin: "6px 0 0", paddingLeft: "18px", color: S.muted, fontSize: "11px" }}>
+                      {part.harmonyWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                  </details>
+                </div>
+              )}
               <AudioPlayer
                 abcText={part.abcText}
                 S={S}

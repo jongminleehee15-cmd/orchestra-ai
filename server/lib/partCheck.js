@@ -44,19 +44,26 @@ function resolveNote(tok, keyMap, barAcc) {
   return st + alter;
 }
 
-// The pitch a scanned event sounds at, as a semitone value: null for rests,
-// and for a chord the TOP note (melody is voiced on top by convention).
-function pitchOfToken(text, keyMap, barAcc) {
+// Every pitch a scanned event sounds, as semitone values: [] for a rest, one
+// value for a note, and each note of a chord in written order.
+function pitchesOfToken(text, keyMap, barAcc) {
   // Drop a trailing length so "C2" reads as the pitch C.
   const body = String(text).replace(/(\d+\/\d+|\d+|\/+)$/, "");
   if (body.startsWith("[")) {
-    const inner = [...body.matchAll(/[_^=]*[a-gA-G][,']*/g)]
+    return [...body.matchAll(/[_^=]*[a-gA-G][,']*/g)]
       .map((x) => resolveNote(x[0], keyMap, barAcc))
       .filter((v) => v !== null);
-    return inner.length ? Math.max(...inner) : null;
   }
-  if (/^[zxZ]$/.test(body)) return null;
-  return resolveNote(body, keyMap, barAcc);
+  if (/^[zxZ]$/.test(body)) return [];
+  const st = resolveNote(body, keyMap, barAcc);
+  return st === null ? [] : [st];
+}
+
+// The pitch a scanned event sounds at, as a semitone value: null for rests,
+// and for a chord the TOP note (melody is voiced on top by convention).
+function pitchOfToken(text, keyMap, barAcc) {
+  const all = pitchesOfToken(text, keyMap, barAcc);
+  return all.length ? Math.max(...all) : null;
 }
 
 // Tokenize one measure into [{ st, len }] (st null for rests).
@@ -74,6 +81,18 @@ export function tokenizeMeasure(measureStr, timeSignature, fifths = 0) {
   const barAcc = {}; // accidentals carry to the end of the bar, per ABC
   return scanMeasure(measureStr, timeSignature).map((e) => ({
     st: pitchOfToken(e.text, keyMap, barAcc),
+    len: e.units,
+  }));
+}
+
+// Like tokenizeMeasure, but keeps EVERY note of a chord: [{ pitches, len }],
+// pitches [] for a rest. Used by the harmony check, which has to judge each
+// note of an accompaniment chord, not just the top one.
+export function measurePitchEvents(measureStr, timeSignature, fifths = 0) {
+  const keyMap = keyAlters(fifths);
+  const barAcc = {};
+  return scanMeasure(measureStr, timeSignature).map((e) => ({
+    pitches: pitchesOfToken(e.text, keyMap, barAcc),
     len: e.units,
   }));
 }

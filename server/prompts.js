@@ -2,6 +2,7 @@ import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures, barUnitsFor 
 import { writtenKeyFor, conventionalKey } from "./lib/transpose.js";
 import { writtenRangeInfo } from "./lib/ranges.js";
 import { styleBlock } from "./lib/styles.js";
+import { suggestedSections } from "./lib/planCheck.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SONG SEARCH
@@ -103,13 +104,7 @@ export function buildBlueprintPrompt({
   const voiceCount = instruments.length || 1;
   const [tsNum, tsDen] = String(timeSignature || "4/4").split("/").map((n) => parseInt(n, 10));
   const barUnits = (tsNum || 4) * 8 / (tsDen || 4);
-  const targetSections = Math.max(1, Math.min(voiceCount, Math.floor(measures / 4)));
-  const sectionSize = Math.max(4, Math.round(measures / Math.max(1, targetSections)));
-  const sections = [];
-  for (let m = 1; m <= measures; m += sectionSize) {
-    const end = Math.min(m + sectionSize - 1, measures);
-    sections.push(`mm.${m}-${end}`);
-  }
+  const sections = suggestedSections(measures, voiceCount).map((s) => `mm.${s.start}-${s.end}`);
 
   return `You are a professional orchestrator. FIRST write the actual main melody of the song, THEN plan how it travels through the ensemble.
 
@@ -184,12 +179,7 @@ export function buildLibraryBlueprintPrompt({
     .map((i) => `${i.name}${i.count > 1 ? ` (×${i.count})` : ""}`)
     .join(", ");
   const voiceCount = instruments.length || 1;
-  const targetSections = Math.max(1, Math.min(voiceCount, Math.floor(measures / 4)));
-  const sectionSize = Math.max(4, Math.round(measures / Math.max(1, targetSections)));
-  const sections = [];
-  for (let m = 1; m <= measures; m += sectionSize) {
-    sections.push(`mm.${m}-${Math.min(m + sectionSize - 1, measures)}`);
-  }
+  const sections = suggestedSections(measures, voiceCount).map((s) => `mm.${s.start}-${s.end}`);
   const measureList = splitMelodyIntoMeasures(melodyAbc)
     .map((m, i) => `  measure ${i + 1}: ${m}   [${chords[i] || ""}]`)
     .join("\n");

@@ -61,7 +61,9 @@ export async function importScore(file) {
   return data.song;
 }
 
-// → blueprint plan { melodyAbc, chords, sections, instrumentRoles, melodySummary }
+// → blueprint plan { melodyAbc, chords, sections, instrumentRoles, melodySummary, planWarnings? }
+// planWarnings: changes the server made so every measure has exactly one
+// melody carrier among the selected instruments.
 export async function generateBlueprint(params) {
   const { plan } = await postJson("/api/blueprint", params);
   return plan;
@@ -79,8 +81,14 @@ export async function generateBlueprint(params) {
 // padded or trimmed to fit the meter, a part padded or trimmed to the
 // requested measure count, and melody-carrying bars left wrong on purpose
 // rather than rewritten. rangeWarnings: notes still outside the instrument's
-// realistic playable range.
+// realistic playable range. harmonyWarnings: accompaniment bars whose notes
+// mostly don't belong to that bar's chord (informational, never auto-fixed).
 export async function generateInstrumentABC(params) {
-  const { abc, melodyWarnings, rangeWarnings } = await postJson("/api/part", params);
-  return { abc, melodyWarnings: melodyWarnings || [], rangeWarnings: rangeWarnings || [] };
+  const { abc, melodyWarnings, rangeWarnings, harmonyWarnings } = await postJson("/api/part", params);
+  return {
+    abc,
+    melodyWarnings: melodyWarnings || [],
+    rangeWarnings: rangeWarnings || [],
+    harmonyWarnings: harmonyWarnings || [],
+  };
 }

@@ -22,6 +22,8 @@ import { partHeader, responseToPartAbc } from "./lib/partFormat.js";
 import { writtenKeyFor, keyFifths } from "./lib/transpose.js";
 import { CHUNK_THRESHOLD, CHUNK_SIZE, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount, isBetterAttempt, repairPartBars, barRepairNote } from "./lib/chunking.js";
 import { ALLOWED_MEASURES, MAX_INSTRUMENTS, isValidMeasures } from "./lib/limits.js";
+import { repairMelodyCoverage } from "./lib/planCheck.js";
+import { checkPartHarmony, harmonyWarnings } from "./lib/harmony.js";
 
 const app = express();
 
@@ -225,6 +227,7 @@ app.post("/api/blueprint", handler(async (req, res) => {
     plan.melodyAbc = await refineMelody(plan.melodyAbc, { ...p, measures, groundTruth });
   }
   if (plan && groundTruth) plan.groundTruth = groundTruth; // surface sources/confidence to the UI
+  enforceMelodyCoverage(plan, p, measures);
   res.json({ plan });
 }));
 
@@ -252,7 +255,24 @@ async function planFromWork(work, measures, p) {
   plan.key = work.key;
   plan.timeSignature = work.timeSignature;
   plan.measures = useMeasures;
+  enforceMelodyCoverage(plan, p, useMeasures);
   return plan;
+}
+
+// Every measure must have exactly one melody carrier among the SELECTED
+// voices. The prompt asks for this; this makes it true, deterministically,
+// and tells the user what was changed (see server/lib/planCheck.js).
+function enforceMelodyCoverage(plan, p, measures) {
+  if (!plan || typeof plan !== "object" || Array.isArray(plan)) return;
+  const voiceNames = p.instruments.map((i) => String(i?.name ?? ""));
+  const { instrumentRoles, warnings } = repairMelodyCoverage({
+    instrumentRoles: plan.instrumentRoles, voiceNames, measures,
+  });
+  plan.instrumentRoles = instrumentRoles;
+  if (warnings.length > 0) {
+    plan.planWarnings = warnings;
+    console.warn(`[blueprint] "${p.songTitle}": melody coverage repaired:\n  ${warnings.join("\n  ")}`);
+  }
 }
 
 // Assign one chord per measure to a chord-less external melody. The melody is
@@ -554,12 +574,30 @@ Return the FULL corrected part again as the same JSON object, nothing else.`,
     ...barFix.unrepairable,
     ...issues.melody,
   ];
+  const harmony = harmonyFor(abc, p, melodySections, concertFifths, writtenFifths);
   res.json({
     abc,
     melodyWarnings: melodyOut.length ? melodyOut : undefined,
     rangeWarnings: issues.range.length ? issues.range : undefined,
+    harmonyWarnings: harmony.length ? harmony : undefined,
   });
 }));
+
+// Informational chord-fit check on the part exactly as it ships, after every
+// repair. Deliberately outside checkAll/isBetterAttempt and the retry prompt:
+// its false-positive rate is unmeasured, and suspensions and passing tones
+// are what the prompt asks for (see server/lib/harmony.js). The log line is
+// the measurement.
+function harmonyFor(abc, p, melodySections, concertFifths, writtenFifths) {
+  const result = checkPartHarmony({
+    partAbc: abc, chords: p.chords, timeSignature: p.timeSignature,
+    melodyAbc: p.melodyAbc, melodySections, writtenFifths, concertFifths,
+  });
+  if (result.checked > 0 || result.unreadable > 0 || result.chordSuspect > 0) {
+    console.log(`[part:${p.instrName}] harmony: ${result.flagged} of ${result.checked} accompaniment bar(s) flagged${result.unreadable ? `, ${result.unreadable} skipped (unreadable chord symbol)` : ""}${result.chordSuspect ? `, ${result.chordSuspect} skipped (the plan's chord doesn't fit its own melody there)` : ""}`);
+  }
+  return harmonyWarnings(result);
+}
 
 // Chunked generation for long parts: one model call per ~16-measure section,
 // each validated (measure count + melody + range) and repaired individually,
@@ -695,10 +733,12 @@ Return THIS SECTION again as the same JSON object (exactly ${n} measure strings,
     ...barFix.unrepairable,
     ...melodyProblems,
   ];
+  const harmony = harmonyFor(abc, p, sections, concertFifths, writtenFifths);
   return {
     abc,
     melodyWarnings: allMelody.length ? allMelody : undefined,
     rangeWarnings: rangeProblems.length ? rangeProblems : undefined,
+    harmonyWarnings: harmony.length ? harmony : undefined,
   };
 }
 

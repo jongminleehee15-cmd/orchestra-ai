@@ -358,6 +358,9 @@ from the canonical tune, and no quality regression.
   preference is 3rds/6ths below the lead.
 - Accompaniment must move (arpeggiation, passing tones, countermelody) —
   static held roots are prompted against.
+- "Every measure has exactly one melody carrier" IS enforced in code since
+  2026-09-26 (see §Melody coverage below); the prompt rule remains as the
+  first line of defence.
 - "No muddy close voicings below C3" is NOT yet enforced in code — prompt-only.
   *(Future: deterministic register-spacing check.)*
 
@@ -484,6 +487,164 @@ per-note range/melody checks, by design (beat alignment across independent
 model calls would need durations lined up on a shared clock, which the ABC
 here doesn't carry). Treat it as "these two are worth listening to
 together," not a hard collision proof.
+
+## Melody coverage is enforced, not just requested (`server/lib/planCheck.js`, 2026-09-26)
+
+Both blueprint prompts say every measure must be carried by exactly one
+instrument. Nothing checked it. Three silent failures were possible: a measure
+nobody was given has no melody in ANY part; a measure given twice has two
+instruments playing the tune in parallel; and a role keyed by a name that is
+not one of the selected voices ("Violin" when the voices are "Violin 1" and
+"Violin 2") reaches no part at all, because the client looks roles up by exact
+voice name. A blueprint response with no `instrumentRoles` at all (the library
+path falls back to `{}`) dropped the melody from every part.
+
+`repairMelodyCoverage` now runs on both blueprint paths (`enforceMelodyCoverage`
+in `index.js`) against the SELECTED voice names. Deterministic repair only, no
+second blueprint call: the blueprint blocks everything else and costs money,
+and the repair changes only who carries the melody, never which notes. Every
+change is sent as `plan.planWarnings` and shown above the part cards. A valid
+plan comes back as the same object with no warnings.
+
+Judgment calls *(correction wanted)*:
+- **Overlap:** the measure goes to the carrier whose claimed range starts
+  LATEST (ties: shorter range, then voice order). It honours the hand-off the
+  incoming section declared, and keeps a short feature nested inside a long
+  section instead of erasing it. "Earliest wins" is equally defensible.
+- **Gap:** the preceding carrier continues through it; a gap at the start goes
+  to the first carrier after it. Extending a phrase felt safer than handing the
+  tune to an instrument that was never planned to have it.
+- **No carriers at all:** rotate through the voices on the prompt's own
+  suggested sections (`suggestedSections`, now shared with both prompts). That
+  arithmetic can leave a one-measure runt section (16 measures, 3 voices →
+  mm.1-5, 6-10, 11-15, 16-16); it was already what the prompts suggested and is
+  kept identical rather than changed silently.
+- Name matching is exact, then trimmed and case-insensitive. It never guesses
+  "Violin" → "Violin 1". A case-variant key is moved to the exact voice name
+  without a warning: that is a fix, not a problem the user can act on.
+- Unparseable labels are dropped; ranges are clipped to the piece.
+
+Not claimed: this guarantees the PLAN covers every measure once. Whether a
+part then actually plays the melody there is still `checkPartMelody`'s job.
+Not live-verified: tested offline only (`planCheck.test.js`).
+
+## Accompaniment is checked against the chords (`server/lib/harmony.js`, 2026-09-26)
+
+The first check on harmony itself. Every earlier part check is about form
+(tune reproduced, notes playable, bars add up). Each part is written by its own
+model call, and the shared chord list is the only thing holding the ensemble
+together, but nothing verified that an accompaniment line fits it.
+
+Rule, per bar where the part does NOT carry the melody: weight each sounding
+note by its duration (from `scanMeasure`), convert written pitch to concert
+pitch class (shift = `(writtenFifths − concertFifths) × 7` mod 12, which holds
+for B♭/F/E♭ parts and for respelled written keys), and flag the bar when chord
+tones make up **less than 3/8** of the sounding time (`FLAG_BELOW`). A bar with
+two chords ("G C") splits evenly and each note is judged against the chord(s)
+it overlaps. A chord-note event counts by the fraction of its notes in the chord.
+
+**Why 3/8.** Any 8 consecutive steps of a diatonic scale contain all 7 scale
+degrees, so a stepwise run over any diatonic triad holds at least 3 of its
+tones in 8 notes (16 sixteenths: at least 6 in 16). Below 3/8 therefore cannot
+be plain scale motion over the right chord. `harmony.test.js` checks this
+exhaustively: every start degree, up and down, eighths and sixteenths, over
+every diatonic triad, in C and D major (392 runs, none flagged). The first
+version used 1/2; the first live run showed why that was wrong (Baroque scale
+runs landing at exactly 3/8, all flagged).
+
+**Exception, known and pinned in a test:** the derivation assumes one chord
+per bar. In a two-chord bar each chord only covers 4 steps, which can hold a
+single chord tone (A B c d over C, then e f g a over G: 25%, flagged). Canon
+in D has two chords per bar throughout. Not lowered further: 25% is where the
+real clashes found live sit.
+
+**A chord that contradicts its own melody is not held against the part.** When
+the canonical melody bar ITSELF scores below 3/8 against the plan's chord, the
+part bar is skipped and counted as `chordSuspect` in the log. Seen live: the
+model-written extension chords put an A chord under the extension melody's own
+E F♯ G, and a French Horn doubling that tune was flagged for following it. The
+real defect there is in the plan, not the part; it is logged, not shown in the
+UI (see "extension chords" below).
+
+Skipped, never guessed: melody bars, rest bars, bars with no chord, "N.C.",
+chord-suspect bars, and any bar whose annotation contains a symbol the parser
+does not understand (counted as `unreadable`). The parser covers triads, 6,
+6/9, 7, maj7, m7, dim/dim7/°, ø/m7b5, aug/+, sus2/sus4, 9/11/13, add-tones,
+altered 5ths/9ths/11ths/13ths, power chords and slash basses.
+
+**Informational only, deliberately.** It is not in `checkAll`, not in
+`isBetterAttempt`, not in the retry prompt, and it never changes a note. The
+part prompt explicitly asks for suspensions, anticipations and passing tones,
+and three live runs are not enough to trust it with regeneration. It returns
+`harmonyWarnings` (shown on the part card) and logs `[part:X] harmony: F of C
+accompaniment bar(s) flagged`. That log line is the measurement that should
+decide whether it ever drives regeneration.
+
+**What it detects is narrower than "wrong chord".** Measured, quarter-note
+arpeggios over a C chord:
+
+| Line over C | Share | Result |
+|---|---|---|
+| Dm (D F A d), Dm (D F A4), B° , B♭ | 0% | flagged |
+| G (G B d4), G7, F (F A c f), C♯m | 25% | flagged |
+| G (G B d g), F (F A c4), Am (A c e a) | 50% | passes |
+| Em (E G B e) | 75% | passes |
+
+A chord that shares NO tones with the written one is always caught. A chord
+that shares tones (V, IV, vi, iii over I) passes or fails depending on which
+shared note the rhythm happens to hold, so this detects lines that are mostly
+outside the chord, not wrong chords in general. It also does not compare a
+part with the MELODY: a line moving in parallel seconds under the tune is only
+caught when it also misses the chord (Trumpet bars 10-11 below were; the same
+clash in even eighths would score at least 3/8 and pass). That needs a
+separate part-against-melody check.
+
+### Live results (2026-09-26, three runs)
+
+Measured on real output, verified bar by bar against the melody and chords.
+
+- **Ode to Joy, 32 bars, Romantic/Full** (Violin 1, Violin 2, Clarinet, French
+  Horn, Cello) and **Canon in D, 16 bars, Baroque/Moderate** (Flute, Trumpet,
+  Alto Sax, Bassoon), both library. Scored with the first version (1/2, no
+  chord-suspect skip): 33 flagged bars. Rescored offline with the current rule:
+  **21**. Of the 12 removed, 11 were false alarms (6 Flute scale runs, 4 bars
+  doubling the melody, one parallel-thirds line) and one was borderline (Alto
+  Sax bar 8, a run against a held melody note, at 3/8). All clear clashes stay
+  flagged:
+  - The **Clarinet** part was genuinely broken: its accompaniment outlined the
+    wrong chords throughout bars 1-16 (G major over D, B-D over A; 13 bars at
+    0-25%), and in its melody bars it replayed the original theme a third low
+    instead of the plan's extension melody. The melody check caught 5 of those
+    6 bars; bar 20 slipped through because its intervals match at the wrong
+    pitch level (the interval-exact design boundary, see above).
+  - **Trumpet** bars 10-11 ran a whole step under the melody in parallel
+    seconds; **Alto Sax** bars 1, 2, 4 clash with it.
+  - Remaining false alarm: **Violin 2 bar 19**, a parallel-sixths line under the
+    tune. Bars 9 and 11 (an E minor shape over an A chord) are borderline.
+- **Yankee Doodle, 16 bars, Playful/Moderate** (Flute, Clarinet, Viola, Tuba),
+  free-text path, generated AFTER the rule change, so not data it was tuned on:
+  **3 of 48** accompaniment bars flagged, all Clarinet at 0% (C-A over G7, an A
+  minor triad over G7), all real. Flute, Viola and Tuba: none.
+- Transposition was confirmed independently: every correctly written
+  transposing part scores far better read with the shift than without it
+  (at 3/8, before the chord-suspect skip: French Horn 1 vs 10 flagged of 26,
+  Trumpet 2 vs 6 of 8, Alto Sax 3 vs 9 of 12, Yankee Doodle Clarinet 3 vs 9 of
+  12). The broken Ode to Joy Clarinet is bad either way (13 vs 11), which is
+  what a part outlining the wrong chords looks like.
+
+Library calibration: the 8 library melodies against their own chords, 85
+bars, 0 flagged; the lowest bars sit at exactly 50%, comfortably above 3/8.
+
+**Extension chords contradict their own melody** (pre-existing, not fixed):
+in the Ode to Joy run, bars composed by `extendLibraryMelody` came with chords
+that the new melody does not fit (an A chord under E F♯ G; an A chord under the
+cadence E D D that the theme itself harmonizes as "A D"). The chord-suspect
+skip stops parts being blamed for it, but the plan's harmony there is still
+wrong, and nothing checks the extension's melody against its chords.
+
+The chords themselves are often the model's (`harmonizeWork`, the free-text
+blueprint, the extension), so this checks consistency with the plan, not that
+the plan's harmony is good.
 
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 
