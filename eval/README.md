@@ -13,6 +13,9 @@ node eval/generate.mjs --dry-run
 # 3. Generate. COSTS MONEY. Without --yes it only prints the plan and call count.
 node eval/generate.mjs --label <name> --yes                  # all 6 cases x 2 repeats
 node eval/generate.mjs --label <name> --cases canon-baroque-16 --repeats 1 --yes  # a cheap first run
+# A change to how PARTS are written: rerun on another label's saved plans, so
+# both sides share melody, chords and roles and only the parts differ.
+node eval/generate.mjs --label <name> --plans-from <label> --yes
 # 4. Score and compare. Offline, free, re-runnable any time.
 node eval/report.mjs <baseline-label> <new-label>
 # 5. Once in a while, listen blind.
@@ -42,6 +45,12 @@ node eval/blind.mjs score eval/blind/<timestamp>
 - `better` / `worse` only when the two versions' ranges across repeats do not
   overlap. One run on either side gives `no verdict (n=1)`. LLM output varies a
   lot: Canon's off-chord bars went 5 then 8 on the SAME plan.
+- Two melody measures, on purpose: `melody mismatch` compares intervals and
+  rhythm (it flags an octave jump inside a bar), `melody wrong pitch` compares
+  the sounding notes octave-free (it flags a tune played in the wrong key or
+  at the wrong transposition, which intervals cannot see).
+- Fresh plans differ run to run. To compare changes to part writing, pair the
+  runs with `--plans-from`; plan-level metrics then match by construction.
 - There is deliberately no single overall score. A change that fixes chords but
   breaks melodies should look like exactly that.
 - `plan: tune off its own chords` scores the plan, not the parts: bars where

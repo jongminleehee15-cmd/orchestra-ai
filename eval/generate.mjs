@@ -2,7 +2,14 @@
 // THIS COSTS MONEY (Anthropic API calls). Nothing is spent without --yes.
 //
 //   node eval/generate.mjs --label <name> [--cases id1,id2] [--repeats 2]
-//                          [--no-context] [--allow-dirty] [--dry-run] [--yes]
+//                          [--no-context] [--plans-from <label>]
+//                          [--allow-dirty] [--dry-run] [--yes]
+//
+// --plans-from <label> reuses that label's saved plan for each case and
+// repeat (same melody, chords, roles, song settings) and only writes new
+// parts. Use it to compare a change to PART writing on identical plans: each
+// fresh blueprint differs, and that variance otherwise swamps small effects.
+// A change to planning itself still needs fresh plans (omit the flag).
 //
 // Safety, because of this repo's environment traps (CLAUDE.md):
 // - It starts its OWN server (plain `node index.js`, never --watch) on a free
@@ -42,6 +49,8 @@ const label = opt("--label");
 const repeats = Number(opt("--repeats", "2"));
 const context = !flag("--no-context");
 const dryRun = flag("--dry-run");
+const plansFrom = opt("--plans-from", null);
+if (plansFrom && !/^[\w.-]+$/.test(plansFrom)) die("--plans-from takes a label name");
 const casesOpt = opt("--cases", "all");
 const caseIds = casesOpt === "all" ? SUITE.cases.map((c) => c.id) : casesOpt.split(",");
 const cases = caseIds.map((id) => SUITE.cases.find((c) => c.id === id) || die(`unknown case "${id}"`));
@@ -66,7 +75,14 @@ const todo = [];
 for (const c of cases) for (let r = 1; r <= repeats; r++) {
   const file = outDir ? join(outDir, `${c.id}-r${r}.json`) : null;
   if (file && existsSync(file)) continue;
-  todo.push({ c, r, file });
+  let saved = null;
+  if (plansFrom) {
+    const src = join(ROOT, "eval", "runs", plansFrom, `${c.id}-r${r}.json`);
+    if (!existsSync(src)) die(`--plans-from ${plansFrom}: no saved run ${c.id}-r${r}.json to take a plan from`);
+    saved = JSON.parse(readFileSync(src, "utf8"));
+    if (!saved.plan?.melodyAbc || !Array.isArray(saved.plan?.chords)) die(`--plans-from ${plansFrom}: ${c.id}-r${r}.json has no usable plan`);
+  }
+  todo.push({ c, r, file, saved });
 }
 const parts = todo.reduce((a, t) => a + voicesOf(t.c).length, 0);
 // Per arrangement: the blueprint, plus a melody-extension call for library
@@ -74,7 +90,9 @@ const parts = todo.reduce((a, t) => a + voicesOf(t.c).length, 0);
 // the free-text path. Each part is one call, up to two with its repair retry;
 // long parts are generated in ~16-bar chunks, each with its own call(s).
 console.log(`Plan: ${todo.length} arrangement(s) to generate (${cases.length} case(s) x ${repeats} repeat(s), existing files skipped), ${parts} part(s), context ${context ? "ON" : "OFF"}.`);
-console.log(`Model calls: roughly ${todo.length * 2 + parts} to ${todo.length * 3 + parts * 4}. Check your Anthropic console for the actual cost after a first small run (--cases <one id> --repeats 1).`);
+if (plansFrom) console.log(`Plans: reused from "${plansFrom}" (no blueprint calls).`);
+const planCalls = plansFrom ? 0 : todo.length;
+console.log(`Model calls: roughly ${planCalls * 2 + parts} to ${planCalls * 3 + parts * 4}. Check your Anthropic console for the actual cost after a first small run (--cases <one id> --repeats 1).`);
 console.log(`Code: ${gitSha.slice(0, 7)}${gitDirty ? " + UNCOMMITTED changes" : ""}.`);
 if (!dryRun && !flag("--yes")) {
   console.log("\nNothing was generated. Re-run with --yes to spend the API calls, or --dry-run to check the setup for free.");
@@ -149,7 +167,12 @@ async function startServer() {
 }
 
 // ── one arrangement, as the app makes it ─────────────────────────────────────
-async function arrange(srv, c, library) {
+async function arrange(srv, c, library, saved) {
+  const t0 = Date.now();
+  if (saved) {
+    // Same plan and song settings as the saved run; only the parts are new.
+    return { ...(await writeParts(srv, saved.common, saved.voices, saved.plan)), seconds: Math.round((Date.now() - t0) / 1000) };
+  }
   const song = c.free
     ? { title: c.free.title, artist: "", genre: "", key: c.free.key, timeSignature: c.free.timeSignature, bpm: c.free.bpm }
     : library.find((s) => s.libraryId === c.libraryId);
@@ -160,13 +183,18 @@ async function arrange(srv, c, library) {
     style: c.style, density: c.density, tempoFeel: c.tempoFeel || "Moderate",
     key: song.key || "C", timeSignature: song.timeSignature || "4/4", bpm: song.bpm || 100, measures: c.measures,
   };
-  const t0 = Date.now();
   const { plan } = await request(srv.port, "POST", "/api/blueprint", {
     ...common, instruments: voices.map((name) => ({ name, count: 1 })),
     ...(c.libraryId ? { libraryId: c.libraryId } : {}),
   });
+  return { ...(await writeParts(srv, common, voices, plan)), seconds: Math.round((Date.now() - t0) / 1000) };
+}
+
+// One /api/part per voice, in voice order, as App.jsx's Generate All.
+async function writeParts(srv, commonIn, voices, plan) {
   // The app keeps its measure count in sync with the plan's (App.jsx).
-  const measures = plan?.measures || c.measures;
+  const measures = plan?.measures || commonIn.measures;
+  const common = { ...commonIn, measures };
   const done = [];
   for (const instrName of voices) {
     if (!srv.alive()) throw new Error("the server died mid-run");
@@ -174,7 +202,7 @@ async function arrange(srv, c, library) {
     const t1 = Date.now();
     try {
       const r = await request(srv.port, "POST", "/api/part", {
-        ...common, measures, instrName, otherInstruments: voices.join(", "),
+        ...common, instrName, otherInstruments: voices.join(", "),
         role: plan?.instrumentRoles?.[instrName] || null,
         melodyAbc: plan?.melodyAbc, chords: plan?.chords,
         instrumentRoles: plan?.instrumentRoles || null,
@@ -188,7 +216,7 @@ async function arrange(srv, c, library) {
       console.log(`    ${instrName}: FAILED ${e.message}`);
     }
   }
-  return { common: { ...common, measures }, voices, plan, parts: done, seconds: Math.round((Date.now() - t0) / 1000) };
+  return { common, voices, plan, parts: done };
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
@@ -206,12 +234,12 @@ try {
     if (!srv.health.hasKey) throw new Error("the server has no ANTHROPIC_API_KEY (server/.env)");
     mkdirSync(outDir, { recursive: true });
     const failed = [];
-    for (const { c, r, file } of todo) {
+    for (const { c, r, file, saved } of todo) {
       console.log(`\n${c.id} r${r}`);
       if (!srv.alive()) throw new Error("the server died; re-run the same command to resume");
       let run;
       try {
-        run = await arrange(srv, c, songs);
+        run = await arrange(srv, c, songs, saved);
       } catch (e) {
         // Nothing is saved, so re-running the same command retries it.
         console.log(`  FAILED, not saved: ${e.message}`);
@@ -221,6 +249,7 @@ try {
       const meta = {
         label, caseId: c.id, repeat: r, context, date: new Date().toISOString(),
         gitSha, gitDirty, model: srv.health.model, legacy: false, seconds: run.seconds,
+        ...(saved ? { plansFrom, planFromSha: saved.meta?.gitSha || null } : {}),
       };
       delete run.seconds;
       writeFileSync(file, JSON.stringify({ meta, ...run }, null, 2) + "\n");

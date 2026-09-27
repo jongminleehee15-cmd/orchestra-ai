@@ -192,3 +192,34 @@ test("a part the server filled with rests counts as missing, not as a clean part
   // The one live case (writtenctx Elise r1 English Horn) is counted.
   assert.equal(scoreRun(loadRun("writtenctx", "elise-minor-24-r1.json")).metrics.missingParts, 1);
 });
+
+test("melody pitch: right intervals at the wrong pitch level are wrong notes", () => {
+  // The Flute's wrong last note in bar 2 is wrong both ways.
+  assert.equal(scoreRun(faulty()).metrics.melodyWrongPitch, 1);
+  // A Clarinet carrying the tune but written at CONCERT pitch (not a tone
+  // up): every interval matches, so checkPartMelody passes it; every bar
+  // sounds a tone low, so all 4 are wrong notes.
+  const run = faulty();
+  run.plan.instrumentRoles = { Flute: { melodySections: [] }, Cello: { primaryRole: "bass", melodySections: [] }, Clarinet: { melodySections: ["mm.1-4"] } };
+  // (Naturals throughout: the part's D-major signature would sharpen C and F.)
+  run.parts[2].abc = hdr("Clarinet", "D") + "=c2 d2 e2 =f2 | a2 g2 =f2 e2 | d2 B2 G2 B2 | =c8 |]";
+  const concert = scoreRun(run).metrics;
+  assert.equal(concert.melodyMismatch, 0, "intervals alone can't see it");
+  assert.equal(concert.melodyWrongPitch, 4);
+  // Written correctly, a tone up in D: right notes.
+  run.parts[2].abc = hdr("Clarinet", "D") + "d2 e2 f2 g2 | b2 a2 g2 f2 | e2 c2 A2 c2 | d8 |]";
+  assert.equal(scoreRun(run).metrics.melodyWrongPitch, 0);
+  // And an octave jump inside the bar is the interval check's job, not this one's.
+  run.parts[2].abc = hdr("Clarinet", "D") + "d2 e2 f2 g2 | b2 a2 g2 f2 | e2 c2 A2 c'2 | d8 |]";
+  assert.equal(scoreRun(run).metrics.melodyWrongPitch, 0);
+  assert.equal(scoreRun(run).metrics.melodyMismatch, 1);
+});
+
+test("melody pitch on the legacy Ode Clarinet: bars 19 and 21-24 a third low, bar 20 right", () => {
+  // ENGINE_NOTES.md once said bar 20 "slipped through" the interval check at
+  // the wrong pitch level; its sounding notes are in fact the tune's (E D D).
+  const run = loadRun("legacy-noctx", "ode-romantic-32-r1.json");
+  const p = scoreRun(run).perPart.find((x) => x.instrName === "Clarinet");
+  assert.equal(p.melodyWrongPitch, 5);
+  assert.equal(p.melodyMismatch, 5);
+});

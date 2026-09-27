@@ -19,7 +19,7 @@ import { checkPartHarmony, chordToneShare, parseBarChords, writtenToConcertShift
 import { checkPartBars, checkPartMelody, partMeasures, measurePitchEvents, melodyMeasureSet } from "../server/lib/partCheck.js";
 import { checkPartRange } from "../server/lib/ranges.js";
 import { splitMelodyIntoMeasures, barUnitsFor } from "../server/lib/abcMelody.js";
-import { findMelodyClashes } from "../server/lib/ensemble.js";
+import { findMelodyClashes, partSoundingBars, melodySoundingBars } from "../server/lib/ensemble.js";
 import { writtenKeyFor, keyFifths } from "../server/lib/transpose.js";
 import { analyzeVoicing } from "../src/lib/voicing.js";
 
@@ -56,6 +56,27 @@ function meanShare(abc, chords, ts, writtenFifths, melodySet, shift) {
     if (v !== null) vals.push(v);
   });
   return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
+// The notes of a bar at sounding pitch, octave dropped: one pitch class per
+// sounding event (the top note of a chord, which is where a tune sits).
+const pitchLine = (events) => events.filter((e) => e.pitches.length).map((e) => ((Math.max(...e.pitches) % 12) + 12) % 12);
+
+// Melody bars whose SOUNDING pitch classes differ from the tune's, note by
+// note. checkPartMelody compares intervals only (so every transposing part
+// passes it at any pitch level); this catches a tune played in the wrong key
+// or at the wrong transposition, which a listener hears as wrong notes. The
+// octave is free, as the prompt allows.
+export function melodyWrongPitch(abc, instrName, sections, tuneBars, key, ts, measures) {
+  const bars = partSoundingBars(abc, instrName, key, ts);
+  let wrong = 0;
+  for (const n of melodyMeasureSet(sections)) {
+    if (n > measures || !tuneBars[n - 1]) continue;
+    const want = pitchLine(tuneBars[n - 1]);
+    const got = bars[n - 1] ? pitchLine(bars[n - 1]) : [];
+    if (want.length !== got.length || want.some((pc, i) => pc !== got[i])) wrong++;
+  }
+  return wrong;
 }
 
 // Does the plan's melody fit the plan's own chords? Same rule as the part
@@ -97,7 +118,8 @@ export function scoreRun(run) {
     lengthErrors: 0, // parts whose measure count isn't the plan's
     barErrors: 0, // bars that don't hold exactly one bar of time
     melodyBars: 0, // melody bars owed by the parts present
-    melodyMismatch: 0, // of those, bars that don't match the tune
+    melodyMismatch: 0, // of those, bars that don't match the tune (intervals)
+    melodyWrongPitch: 0, // of those, bars whose sounding notes aren't the tune's
     rangeNotes: 0, // notes outside the instrument's written range
     harmonyChecked: 0, harmonyFlagged: 0, harmonySuspect: 0, harmonyUnreadable: 0,
     clashes: 0, // bars where a part rubs against the melody carrier
@@ -107,6 +129,7 @@ export function scoreRun(run) {
     mud: 0, unison: 0, dynamics: 0, voicingOther: 0,
   };
   const perPart = [];
+  const tuneBars = plan.melodyAbc ? melodySoundingBars(plan.melodyAbc, key, ts) : [];
   const served = { melody: 0, range: 0, harmony: 0 };
 
   for (const p of parts) {
@@ -125,6 +148,8 @@ export function scoreRun(run) {
       ? checkPartMelody(p.abc, plan.melodyAbc, sections, 0, ts, concertFifths, w.fifths).problems.length
       : 0;
     m.melodyMismatch += mel;
+    const wrongPitch = plan.melodyAbc && sections.length ? melodyWrongPitch(p.abc, p.instrName, sections, tuneBars, key, ts, measures) : 0;
+    m.melodyWrongPitch += wrongPitch;
     const range = checkPartRange(p.abc, p.instrName, 0, Infinity).problems.length;
     m.rangeNotes += range;
     const h = checkPartHarmony({
@@ -148,7 +173,7 @@ export function scoreRun(run) {
     }
 
     for (const k of Object.keys(served)) served[k] += (p[`${k}Warnings`] || []).length;
-    perPart.push({ instrName: p.instrName, bars, barErrors: barErr, melodyMismatch: mel, rangeNotes: range, harmonyFlagged: h.flagged, harmonyChecked: h.checked, transposition });
+    perPart.push({ instrName: p.instrName, bars, barErrors: barErr, melodyMismatch: mel, melodyWrongPitch: wrongPitch, rangeNotes: range, harmonyFlagged: h.flagged, harmonyChecked: h.checked, transposition });
   }
 
   // Melody coverage among the parts that actually exist.
@@ -186,6 +211,7 @@ export const REPORT_METRICS = [
   { key: "lengthErrors", label: "wrong-length parts", per: null },
   { key: "barErrors", label: "bad bars /100 part-bars", per: "partBars" },
   { key: "melodyMismatch", label: "melody mismatch % of owed bars", per: "melodyBars" },
+  { key: "melodyWrongPitch", label: "melody wrong pitch % of owed bars", per: "melodyBars" },
   { key: "harmonyFlagged", label: "off-chord % of checked bars", per: "harmonyChecked" },
   { key: "clashes", label: "melody clashes /100 part-bars", per: "partBars" },
   { key: "rangeNotes", label: "out-of-range notes /100 part-bars", per: "partBars" },

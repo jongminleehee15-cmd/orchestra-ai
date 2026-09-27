@@ -616,8 +616,11 @@ Measured on real output, verified bar by bar against the melody and chords.
     wrong chords throughout bars 1-16 (G major over D, B-D over A; 13 bars at
     0-25%), and in its melody bars it replayed the original theme a third low
     instead of the plan's extension melody. The melody check caught 5 of those
-    6 bars; bar 20 slipped through because its intervals match at the wrong
-    pitch level (the interval-exact design boundary, see above).
+    6 bars. *(Corrected 2026-09-27: this said bar 20 "slipped through because
+    its intervals match at the wrong pitch level". Read at sounding pitch,
+    bar 20 is E D D, exactly the extension tune: the one right bar, not a
+    missed one. Found by the evaluation's pitch-level melody check, which
+    pins it in a test.)*
   - **Trumpet** bars 10-11 shadow the melody in parallel 7ths, a 7th ABOVE
     the Alto Sax carrying it. *(Corrected 2026-09-26: first written as "a
     whole step under the melody in parallel seconds". That compared against
