@@ -498,6 +498,7 @@ app.post("/api/part", handler(async (req, res) => {
     const bars = checkPartBars(candidate, p.timeSignature).problems;
     return {
       melody: melody.problems, range: range.problems, structure, bars,
+      lengthOff: Math.abs(got - measures), // measures to pad or cut (isBetterAttempt)
       total: melody.problems.length + range.problems.length + structure.length + bars.length,
     };
   };
@@ -659,6 +660,7 @@ async function generatePartChunked(p, measures) {
       const bars = checkPartBars(candidate, p.timeSignature, offset).problems;
       return {
         structure, melody, range, bars,
+        lengthOff: Math.abs(got - n), // measures to pad or cut (isBetterAttempt)
         total: structure.length + melody.length + range.length + bars.length,
       };
     };

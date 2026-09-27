@@ -76,7 +76,14 @@ export function fitMeasureCount(measureArr, target, timeSignature) {
 // Structural damage = the wrong number of bars, or bars that don't hold the
 // right number of beats. Both break alignment with every other part, unlike a
 // melody/range problem which is confined to this one line.
-const structuralCount = (r) => r.structure.length + (r.bars?.length || 0);
+//
+// A wrong length counts once per measure that would have to be padded with
+// rests or cut (`lengthOff`), not once per message: live (2026-09-27), a
+// retry that returned NO usable notation scored 1 ("you wrote 0 measures")
+// against a real first attempt's 8 slightly short bars, won, and shipped 24
+// bars of silence, though the bar repair below would have fixed the first
+// attempt. Callers that don't report lengthOff fall back to the old count.
+const structuralCount = (r) => (r.lengthOff ?? r.structure.length) + (r.bars?.length || 0);
 
 // Decide whether a repair-retry attempt should replace the original, given
 // each attempt's check results ({ structure: [], bars: [], total: <number> },

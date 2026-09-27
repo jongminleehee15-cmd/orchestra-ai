@@ -273,3 +273,19 @@ test("validators report PIECE measure numbers when given a chunk offset", () => 
   assert.equal(range.problems.length, 1);
   assert.match(range.problems[0], /measure 18/, `piece-numbered: ${range.problems[0]}`);
 });
+
+test("isBetterAttempt: a retry with no usable notation never beats a real part", () => {
+  // Live 2026-09-27 (Elise English Horn, 24 bars of 3/8): the first attempt
+  // had 8 bars half an eighth short (repairable) plus melody and range
+  // problems; the retry returned nothing usable. Counted per message the
+  // empty retry won (1 structural problem vs 8) and shipped 24 bars of rests.
+  const firstAttempt = { structure: [], bars: Array(8).fill("short bar"), melody: ["a", "b"], range: Array(8).fill("low"), lengthOff: 0, total: 18 };
+  const emptyRetry = { structure: ["you wrote 0 measures"], bars: [], melody: Array(6).fill("missing"), range: [], lengthOff: 24, total: 7 };
+  assert.equal(isBetterAttempt(emptyRetry, firstAttempt), false, "24 bars of silence is worse than 8 short bars");
+  assert.equal(isBetterAttempt(firstAttempt, emptyRetry), true);
+  // Each missing measure weighs what a bad bar does: a retry 2 measures short
+  // but otherwise clean beats 3 bad bars, and loses to 1.
+  const twoShort = { structure: ["you wrote 22 measures"], bars: [], lengthOff: 2, total: 1 };
+  assert.equal(isBetterAttempt(twoShort, { structure: [], bars: ["x", "y", "z"], lengthOff: 0, total: 3 }), true);
+  assert.equal(isBetterAttempt(twoShort, { structure: [], bars: ["x"], lengthOff: 0, total: 1 }), false);
+});
