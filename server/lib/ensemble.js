@@ -17,8 +17,8 @@
 import { measurePitchEvents, partMeasures, melodyMeasureSet } from "./partCheck.js";
 import { splitMelodyIntoMeasures, barUnitsFor, UNIT_EPSILON } from "./abcMelody.js";
 import { parseBarChords } from "./harmony.js";
-import { WRITTEN_SHIFT } from "./ranges.js";
-import { writtenKeyFor, keyFifths } from "./transpose.js";
+import { WRITTEN_SHIFT, melodyPlacement } from "./ranges.js";
+import { writtenKeyFor, keyFifths, writtenMelodyFor } from "./transpose.js";
 import { baseName } from "./instrMeta.js";
 
 // ── Sounding pitch ───────────────────────────────────────────────────────────
@@ -114,6 +114,19 @@ export function renderEnsembleContext({ contextParts, forInstr, instrumentRoles,
   const tune = melodySoundingBars(melodyAbc, concertKey, timeSignature);
   const carrierOf = (n) => Object.entries(instrumentRoles || {})
     .find(([, r]) => melodyMeasureSet(r?.melodySections || []).has(n))?.[0];
+  // An unwritten carrier's tune is shown at the octave that carrier will be
+  // handed it (ranges.js melodyPlacement), not at the canonical octave: a
+  // Cello will play Canon in D an octave below the violin's, and the parts
+  // written before it should arrange around where it will really sound.
+  const octaveCache = new Map();
+  const carrierOctave = (carrier, n) => {
+    if (!carrier) return 0;
+    if (!octaveCache.has(carrier)) {
+      const w = writtenKeyFor(concertKey, carrier);
+      octaveCache.set(carrier, melodyPlacement(writtenMelodyFor(melodyAbc, concertKey, carrier), w.fifths, timeSignature, instrumentRoles?.[carrier]?.melodySections || [], carrier));
+    }
+    return octaveCache.get(carrier).find((x) => n >= x.from && n <= x.to)?.k || 0;
+  };
 
   const lines = [];
   for (let n = from; n <= to; n++) {
@@ -121,7 +134,9 @@ export function renderEnsembleContext({ contextParts, forInstr, instrumentRoles,
     const carrier = carrierOf(n);
     const carrierWritten = bars.some((b) => b.instrName === carrier);
     if (!carrierWritten && tune[n - 1] && carrier !== forInstr) {
-      lines.push(`  melody (${carrier ? `${carrier}, not written yet; ` : ""}canonical tune, its octave may differ): ${describeBar(tune[n - 1], shift, names)}`);
+      const k = carrierOctave(carrier, n);
+      const placed = k ? tune[n - 1].map((e) => ({ ...e, pitches: e.pitches.map((p) => p + 12 * k) })) : tune[n - 1];
+      lines.push(`  melody (${carrier ? `${carrier}, not written yet; the tune at the octave it will play it` : "canonical tune, its octave may differ"}): ${describeBar(placed, shift, names)}`);
     }
     for (const b of bars) {
       if (!b.bars[n - 1]) continue;

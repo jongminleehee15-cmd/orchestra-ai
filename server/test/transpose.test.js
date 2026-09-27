@@ -159,7 +159,7 @@ test("a transposing part is handed the melody in written pitch and never told to
   const trumpet = buildPartPrompt({ ...base, instrName: "Trumpet" });
   // Concert F# G A B | d is written a tone up in E: G# A B C# | e.
   assert.match(trumpet, /MAIN MELODY AS YOU WRITE IT \(already transposed into your written key of E; do NOT transpose it again; 4\/4, L:1\/8\):\nG2 A2 B2 c2 \| e8 \|\]/);
-  assert.match(trumpet, /EXACT MELODY YOU MUST PLAY \(already in your written key of E: play these pitches and rhythms exactly as shown/);
+  assert.match(trumpet, /EXACT MELODY YOU MUST PLAY \(already in your written key of E, and at the octave to play it, chosen to sit in your comfortable range: play these pitches and rhythms exactly as shown, in this octave\)/);
   assert.match(trumpet, / {2}measure 1: G2 A2 B2 c2\n {2}measure 2: e8/);
   assert.match(trumpet, /Everything below is ALREADY in your written key of E, converted for you: the MAIN MELODY, your melody excerpts, the CHORDS and the ensemble\./);
   for (const gone of [/concert pitch, L:1\/8/, /CONCERT pitches/, /transpose each of those notes/, /rewrite each/, /transposed a major 2nd/]) {
@@ -168,7 +168,7 @@ test("a transposing part is handed the melody in written pitch and never told to
   // A non-transposing part still gets the concert melody and its old wording.
   const violin = buildPartPrompt({ ...base, instrName: "Violin" });
   assert.match(violin, /MAIN MELODY \(concert key of D, 4\/4, concert pitch, L:1\/8\):\nF2 G2 A2 B2 \| d8 \|\]/);
-  assert.match(violin, /reproduce these pitches\/rhythms, transposed only to fit your range/);
+  assert.match(violin, /EXACT MELODY YOU MUST PLAY \(at the octave to play it, chosen to sit in your comfortable range/);
 });
 
 // ── The melody in written pitch ─────────────────────────────────────────────
@@ -264,4 +264,23 @@ test("random melodies in every concert key sound exactly the same in written pit
     n++;
   }
   assert.equal(n, 7 * CONCERT_KEYS.length * 40);
+});
+
+test("a low instrument is handed its melody phrases at its own octave, not the violin's", () => {
+  const base = {
+    songTitle: "T", style: "Baroque", density: "Full", tempoFeel: "Moderate", key: "D", timeSignature: "4/4",
+    bpm: 56, measures: 4, otherInstruments: "x", chords: ["D A", "Bm F#m", "G D", "G A"],
+    melodyAbc: "f4 e4 | d4 c4 | B4 A4 | B4 c4 |]", role: { primaryRole: "melody", melodySections: ["mm.1-4"] },
+  };
+  const cello = buildPartPrompt({ ...base, instrName: "Cello" });
+  // The live case: F#5-A4 is the violin's octave; the Cello gets F#4-A3.
+  assert.match(cello, / {2}measure 1: F4 E4\n {2}measure 2: D4 C4\n {2}measure 3: B,4 A,4\n {2}measure 4: B,4 C4/);
+  assert.match(cello, /at the octave to play it, chosen to sit in your comfortable range/);
+  assert.ok(!/upper register/.test(cello), "no part is told to sing the tune in its upper register");
+  assert.ok(!/transposed only as needed/.test(cello));
+  // The shared reference is still the canonical tune, untouched.
+  assert.match(cello, /MAIN MELODY \(concert key of D, 4\/4, concert pitch, L:1\/8\):\nf4 e4 \| d4 c4 \| B4 A4 \| B4 c4 \|\]/);
+  // A Violin plays it where it is.
+  const violin = buildPartPrompt({ ...base, instrName: "Violin" });
+  assert.match(violin, / {2}measure 1: f4 e4\n/);
 });

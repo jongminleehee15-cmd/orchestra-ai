@@ -840,7 +840,7 @@ ensemble context on. 12 of 12 arrangements, no failed part. Pooled over
 | Melody clashes | 4.0 per 100 part-bars; Ode 6-9 |
 | Plan's tune off its own chords | 9 of 288 bars (3.1%), Canon and Yankee up to 19% in one run |
 | Melody marked softer than accompaniment | 93 bars, the most frequent flag in every case |
-| Range, bar length, part length, coverage, mud, unison | 0 (one bad bar in one Twinkle run) |
+| Range, bar length, part length, coverage, mud, unison | 0 (one bad bar in one Twinkle run) *(Corrected 2026-09-27: range was not 0. The range check ignored key signatures and allowed a semitone of slack; read correctly, the saved runs held 28 notes outside a hard range. See §Range below.)* |
 
 What this suggests, to be tested rather than assumed: the structural checks
 (length, range, coverage) now hold; the open problems are melody accuracy in
@@ -974,6 +974,51 @@ clashes (Ode 7.8 to 0.3, Twinkle 3.8 to 0.8 per 100 part-bars).
 - The retry prompt's melody messages now quote written pitch for transposing
   parts (the check reads the written melody; verdicts are identical, 59 saved
   parts), but nothing has checked how often retries fix melody bars.
+
+## Range: reading notes correctly, and melody at a playable octave (2026-09-27)
+
+Reported by the user: a Cello part in Canon in D went up to F#5, far too
+high for most players. Two causes, both measured on the saved eval runs.
+
+**1. The range check could not see it.** `checkPartRange` had its own pitch
+reader that ignored the key signature, and allowed a semitone of slack to
+make up for it. The Cello's `f` in D major is F#5, one above its E5 top; the
+reader saw F5, inside the slack. Read with key signature and bar accidentals,
+the saved runs held 28 notes outside a hard range; the check flagged 0. It
+now uses the shared reader (partCheck's measurePitchEvents) with the key from
+the part's own header, and no slack. `enforceRange` reads the same way, and
+moves notes with `moveOctaves` (transpose.js), which rewrites accidentals so
+that moving one note never changes another's pitch: naively raising the first
+of "^F, F" leaves "^F F", and the second F turns sharp. Property-tested on
+random bars in every key.
+
+**2. Nothing chose the melody's octave.** Every part was handed the tune at
+its canonical octave (where a violin reads it), told to move it "only as
+needed", and told to sing it "in the upper register". Melody notes outside
+the instrument's comfortable band: Tuba 48%, Cello 27%, Piccolo 23% (too
+LOW), Tenor Sax 17%, Trombone 13%; Violin, Flute, Clarinet near 0.
+Now, per melody phrase (a melodySections entry), code picks the whole-octave
+move that puts the most notes in the comfortable band while keeping every
+note in the hard range (ties: the smallest move, then the higher octave; no
+move keeps every note in range: none, the hard-range fix handles it):
+- the prompt hands the part its excerpts at that octave, and the "upper
+  register" instruction is gone;
+- the context grid shows an unwritten carrier's tune at that octave, so parts
+  written earlier arrange around where it will really sound;
+- after generation, `placeMelodyPhrases` moves any phrase the model still put
+  badly, whole, before the per-measure hard-range fix. The user sees it as
+  an "Adjusted for playability" note, not as a warning to Regenerate.
+Canon in D's opening: Violin and Flute stay, Cello/Trombone/Viola go down
+one octave, Bassoon and Tuba two, Piccolo up one.
+
+**Offline, on all 118 saved arrangements** (the new post-processing applied
+to parts the old engine wrote): melody notes outside the comfortable band
+6.6% to 1.1%; hard-range notes 28 to 0; no melody-check verdict changed
+(125 interval, 95 pitch, before and after); off-chord, clashes and mud
+identical. The cost: melody bars with another part above the tune rose from
+39.7% to 45.5%, since moving a tune down after the fact leaves the
+accompaniment where it was. Live generation should do better (parts are
+told where the tune will sit); the paired run below measures it.
 
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 

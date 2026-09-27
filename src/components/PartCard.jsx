@@ -108,6 +108,11 @@ export default function PartCard({ part, idx, isActive, role, S, songLabel, onSe
                   </details>
                 </div>
               )}
+              {part.adjustments?.length > 0 && (
+                <div style={{ padding: "8px 12px", marginBottom: "8px", border: `1px solid ${S.muted}33`, borderRadius: "4px", fontSize: "11px", color: S.muted }}>
+                  Adjusted for playability: {part.adjustments.join("; ")}.
+                </div>
+              )}
               <AudioPlayer
                 abcText={part.abcText}
                 S={S}

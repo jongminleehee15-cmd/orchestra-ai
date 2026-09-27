@@ -17,7 +17,7 @@
 
 import { checkPartHarmony, chordToneShare, parseBarChords, writtenToConcertShift, isFlagged } from "../server/lib/harmony.js";
 import { checkPartBars, checkPartMelody, partMeasures, measurePitchEvents, melodyMeasureSet } from "../server/lib/partCheck.js";
-import { checkPartRange } from "../server/lib/ranges.js";
+import { checkPartRange, writtenRangeInfo, partKey } from "../server/lib/ranges.js";
 import { splitMelodyIntoMeasures, barUnitsFor } from "../server/lib/abcMelody.js";
 import { findMelodyClashes, partSoundingBars, melodySoundingBars } from "../server/lib/ensemble.js";
 import { writtenKeyFor, keyFifths } from "../server/lib/transpose.js";
@@ -120,6 +120,8 @@ export function scoreRun(run) {
     melodyBars: 0, // melody bars owed by the parts present
     melodyMismatch: 0, // of those, bars that don't match the tune (intervals)
     melodyWrongPitch: 0, // of those, bars whose sounding notes aren't the tune's
+    melodyNotes: 0, melodyOutOfComfort: 0, // melody notes outside the instrument's comfortable band
+    melodyCovered: 0, // melody bars where another part sits above the carrier for half the bar or more
     rangeNotes: 0, // notes outside the instrument's written range
     harmonyChecked: 0, harmonyFlagged: 0, harmonySuspect: 0, harmonyUnreadable: 0,
     clashes: 0, // bars where a part rubs against the melody carrier
@@ -184,6 +186,46 @@ export function scoreRun(run) {
   const fit = planChordFit(plan, key, ts);
   m.planChordChecked = fit.checked; m.planChordFlagged = fit.flagged;
 
+  // Melody notes outside the comfortable band, read in each part's written
+  // key (ranges.js reads pitches the same way).
+  for (const p of parts) {
+    const info = writtenRangeInfo(p.instrName);
+    const sections = roles[p.instrName]?.melodySections || [];
+    if (!info || !sections.length) continue;
+    const { fifths } = partKey(p.abc);
+    const bars = partMeasures(p.abc);
+    for (const n of melodyMeasureSet(sections)) {
+      if (n > measures || !bars[n - 1]) continue;
+      for (const e of measurePitchEvents(bars[n - 1], ts, fifths)) for (const st of e.pitches) {
+        const v = 60 + st;
+        m.melodyNotes++;
+        if (v < info.comfortLo.midi || v > info.comfortHi.midi) m.melodyOutOfComfort++;
+      }
+    }
+  }
+
+  // Burying guard: in each melody bar, does some other part sound ABOVE the
+  // carrier's top note for at least half the bar? Moving a tune down an
+  // octave must not leave the accompaniment on top of it.
+  {
+    const sounding = new Map(parts.map((p) => [p.instrName, partSoundingBars(p.abc, p.instrName, key, ts)]));
+    const barUnits = barUnitsFor(ts);
+    for (let n = 1; n <= measures; n++) {
+      const carrier = parts.find((p) => melodyMeasureSet(roles[p.instrName]?.melodySections || []).has(n));
+      const tune = carrier && sounding.get(carrier.instrName)[n - 1];
+      if (!tune) continue;
+      const top = Math.max(-Infinity, ...tune.flatMap((e) => e.pitches));
+      if (!Number.isFinite(top)) continue;
+      const covered = parts.some((p) => {
+        if (p === carrier || melodyMeasureSet(roles[p.instrName]?.melodySections || []).has(n)) return false;
+        const bar = sounding.get(p.instrName)[n - 1] || [];
+        const above = bar.filter((e) => e.pitches.some((v) => v > top)).reduce((a, e) => a + (e.end - e.start), 0);
+        return above >= barUnits / 2;
+      });
+      if (covered) m.melodyCovered++;
+    }
+  }
+
   m.clashes = findMelodyClashes({
     parts: parts.map((p) => ({ instrName: p.instrName, abc: p.abc })),
     instrumentRoles: roles, chords, concertKey: key, timeSignature: ts, limit: Infinity,
@@ -214,6 +256,8 @@ export const REPORT_METRICS = [
   { key: "melodyWrongPitch", label: "melody wrong pitch % of owed bars", per: "melodyBars" },
   { key: "harmonyFlagged", label: "off-chord % of checked bars", per: "harmonyChecked" },
   { key: "clashes", label: "melody clashes /100 part-bars", per: "partBars" },
+  { key: "melodyOutOfComfort", label: "melody notes outside comfortable range %", per: "melodyNotes" },
+  { key: "melodyCovered", label: "melody bars with a part above the tune %", per: "measures" },
   { key: "rangeNotes", label: "out-of-range notes /100 part-bars", per: "partBars" },
   { key: "uncoveredBars", label: "bars with no melody", per: null },
   { key: "planChordFlagged", label: "plan: tune off its own chords, % bars", per: "planChordChecked" },

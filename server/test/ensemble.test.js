@@ -157,7 +157,7 @@ test("the context grid shows finished parts at sounding pitch, and the tune wher
   assert.equal(lines[1], "  Trumpet (MELODY): E4 q, F4 q, G4 q, A4 q", "the trumpet's written F# G A B sounds E F G A");
   assert.equal(lines[2], "  Viola: C4 w");
   assert.equal(lines[3], "m2:");
-  assert.match(lines[4], /^ {2}melody \(Flute, not written yet; canonical tune, its octave may differ\): C5 w$/);
+  assert.match(lines[4], /^ {2}melody \(Flute, not written yet; the tune at the octave it will play it\): C5 w$/);
   assert.ok(!grid.includes("Cello"), "a part never sees itself");
   assert.equal(renderEnsembleContext({ contextParts: [], forInstr: "Cello", concertKey: "C", timeSignature: "4/4", from: 1, to: 1 }), "");
   assert.equal(renderEnsembleContext({ contextParts: null, forInstr: "Cello", concertKey: "C", timeSignature: "4/4", from: 1, to: 1 }), "");
@@ -223,6 +223,18 @@ test("a transposing reader sees the grid in its own written pitch, octave and sp
     instrumentRoles: { Violin: { melodySections: ["mm.1"] } },
     melodyAbc: "C8 |]", concertKey: "C", timeSignature: "4/4", from: 1, to: 1,
   }).split("\n");
-  assert.equal(grid[1], "  melody (Violin, not written yet; canonical tune, its octave may differ): G4 w");
+  assert.equal(grid[1], "  melody (Violin, not written yet; the tune at the octave it will play it): G4 w");
   assert.equal(grid[2], "  Trumpet: G4 w");
+});
+
+test("an unwritten carrier's tune is shown at the octave it will be handed", () => {
+  // Canon in D's opening for a Cello: shown F#4-A3, where the Cello will play
+  // it, not F#5-A4, so the parts written first arrange around the real register.
+  const grid = renderEnsembleContext({
+    contextParts: [{ instrName: "Violin", abc: abc("D8 | D8 |]", "D") }], forInstr: "Viola",
+    instrumentRoles: { Cello: { melodySections: ["mm.1-2"] }, Violin: { melodySections: [] } },
+    melodyAbc: "f4 e4 | d4 c4 |]", concertKey: "D", timeSignature: "4/4", from: 1, to: 2,
+  }).split("\n");
+  assert.equal(grid[1], "  melody (Cello, not written yet; the tune at the octave it will play it): F#4 h, E4 h");
+  assert.equal(grid[4], "  melody (Cello, not written yet; the tune at the octave it will play it): D4 h, C#4 h");
 });

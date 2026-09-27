@@ -208,7 +208,7 @@ async function writeParts(srv, commonIn, voices, plan) {
         instrumentRoles: plan?.instrumentRoles || null,
         contextParts: context ? fitContext(finished) : [],
       });
-      done.push({ instrName, abc: r.abc, melodyWarnings: r.melodyWarnings || [], rangeWarnings: r.rangeWarnings || [], harmonyWarnings: r.harmonyWarnings || [] });
+      done.push({ instrName, abc: r.abc, melodyWarnings: r.melodyWarnings || [], rangeWarnings: r.rangeWarnings || [], harmonyWarnings: r.harmonyWarnings || [], adjustments: r.adjustments || [] });
       console.log(`    ${instrName}: ${((Date.now() - t1) / 1000).toFixed(0)}s`);
     } catch (e) {
       // The app marks the part as failed and carries on; so does this.

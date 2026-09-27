@@ -1,6 +1,6 @@
 import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures, barUnitsFor } from "./lib/abcMelody.js";
 import { writtenKeyFor, conventionalKey, writtenChordsFor, writtenMelodyFor } from "./lib/transpose.js";
-import { writtenRangeInfo } from "./lib/ranges.js";
+import { writtenRangeInfo, melodyPlacement, shiftOctaves } from "./lib/ranges.js";
 import { styleBlock } from "./lib/styles.js";
 import { suggestedSections } from "./lib/planCheck.js";
 import { renderEnsembleContext } from "./lib/ensemble.js";
@@ -339,7 +339,18 @@ export function buildPartPrompt({
   const partMelody = transposes ? writtenMelodyFor(melodyAbc, key, instrName) : melodyAbc;
 
   // Per-measure exact notes for the measures THIS part must play as melody.
-  const excerpts = hasMelody ? buildMelodyExcerpts(partMelody, melodySections) : "";
+  // Each melody phrase at the octave this instrument should play it, chosen
+  // in code (ranges.js): most notes in its comfortable band, inside its hard
+  // range. Handed the tune at the violin's octave and told to move it "only
+  // as needed", a Cello played Canon in D up to F#5 (ENGINE_NOTES.md).
+  const partFifths = writtenKeyFor(key, instrName).fifths;
+  const placements = hasMelody ? melodyPlacement(partMelody, partFifths, timeSignature, melodySections, instrName) : [];
+  const placedBars = splitMelodyIntoMeasures(partMelody || "");
+  for (const { from, to, k } of placements) {
+    for (let n = from; n <= to && n <= placedBars.length; n++) placedBars[n - 1] = shiftOctaves(placedBars[n - 1], partFifths, k);
+  }
+  const placedMelody = placements.some((x) => x.k) ? `${placedBars.join(" | ")} |]` : partMelody;
+  const excerpts = hasMelody ? buildMelodyExcerpts(placedMelody, melodySections) : "";
 
   const roleBlock = buildRoleInstruction(instrName, role);
 
@@ -391,14 +402,14 @@ ${transposes
     : `CHORDS (one per measure): ${Array.isArray(chords) ? chords.join(" | ") : chords || ""}`}
 
 USING THE REFERENCE:
-- In measures where YOU carry the melody, play THE EXACT MELODY shown below${transposes ? `, exactly as shown (already in your written key of ${writtenKey}; move it only by whole octaves if needed to sit in your range)` : ", transposed only as needed to sit in your instrument's range"} — keep every pitch and rhythm recognizable (light ornamentation OK), do NOT substitute a different tune.
+- In measures where YOU carry the melody, play THE EXACT MELODY shown below${transposes ? `, exactly as shown there (already in your written key of ${writtenKey}, and at the octave to play it)` : ", exactly as shown there, at the octave shown"} — keep every pitch and rhythm recognizable (light ornamentation OK), do NOT substitute a different tune.
 - In all other measures, write a MOVING, idiomatic accompaniment from the chords — do NOT sit on static held roots. Use arpeggiation, stepwise or walking motion, a rhythmic or harmonic countermelody, passing tones and suspensions — while staying register-clear of the melody so the tune still sings through: sit BELOW it, or ABOVE it when your instrument's range lies over the melody (flute, piccolo, violin, mallet percussion…). NEVER go outside your playable range just to get clear of the melody.
 `
     : "";
 
   const excerptBlock = excerpts
     ? `
-EXACT MELODY YOU MUST PLAY (${transposes ? `already in your written key of ${writtenKey}: play these pitches and rhythms exactly as shown, moving only by whole octaves if needed to fit your range` : "reproduce these pitches/rhythms, transposed only to fit your range"}):
+EXACT MELODY YOU MUST PLAY (${transposes ? `already in your written key of ${writtenKey}, and ` : ""}at the octave to play it, chosen to sit in your comfortable range: play these pitches and rhythms exactly as shown, in this octave):
 ${excerpts}
 ${chunk
     ? `"measure N" above is a PIECE measure number — since this response starts at piece measure ${chunk.start}, piece measure N is measure N−${chunk.start - 1} of your output. Keep the melody intact.`
@@ -458,7 +469,7 @@ ${arrangingBlock}
 ${styleBlock(style, density)}
 ${transposeBlock}
 ${rangeBlock}
-CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `as shown, already in ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower (or higher, for instruments whose range is above the tune), remain inside your playable range, and play the moving accompaniment described above, never a static drone.
+CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (as shown${transposes ? `, already in ${writtenKey}` : ""}, at the octave shown), clear and singable. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower (or higher, for instruments whose range is above the tune), remain inside your playable range, and play the moving accompaniment described above, never a static drone.
 
 OUTPUT FORMAT — return ONLY this JSON object and nothing else:
 {"measures": ["<measure 1>", "<measure 2>", ...]}

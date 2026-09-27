@@ -17,7 +17,7 @@ import { searchOpenHymnal, getOpenHymnalWork } from "./lib/openhymnal.js";
 import { tonicChord } from "./lib/symbolic.js";
 import { loadImports, getImportedWork, searchImports, ingestScore, saveImportChords, importToSong } from "./lib/imports.js";
 import { checkPartMelody, partMeasures, checkPartBars, melodyMeasureSet } from "./lib/partCheck.js";
-import { checkPartRange, enforceRange } from "./lib/ranges.js";
+import { checkPartRange, enforceRange, placeMelodyPhrases } from "./lib/ranges.js";
 import { partHeader, responseToPartAbc } from "./lib/partFormat.js";
 import { writtenKeyFor, keyFifths, writtenMelodyFor } from "./lib/transpose.js";
 import { CHUNK_THRESHOLD, CHUNK_SIZE, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount, isBetterAttempt, repairPartBars, barRepairNote } from "./lib/chunking.js";
@@ -538,6 +538,15 @@ Return the FULL corrected part again as the same JSON object, nothing else.`,
     }
   }
 
+  // Each melody phrase at a playable octave, moved WHOLE (ranges.js), before
+  // the per-measure last resort below. Live, a Cello played Canon in D at the
+  // violin's octave. The user is told: the part is not what the model wrote.
+  const placed = placeMelodyPhrases(abc, p.instrName, melodySections);
+  if (placed.changes.length) {
+    abc = placed.abc;
+    console.log(`[part:${p.instrName}] melody placed: ${placed.changes.join("; ")}`);
+  }
+
   // Deterministic last resort: the prompt + retry can still ship unplayable
   // notes (seen live: flute/oboe below their floor) — octave-correct them.
   const enforced = enforceRange(abc, p.instrName);
@@ -579,7 +588,7 @@ Return the FULL corrected part again as the same JSON object, nothing else.`,
     console.warn(`[part:${p.instrName}] bar-length auto-fix: ${barFix.repaired.join("; ")}`);
   }
 
-  if (enforced.changed || lengthNote || barFix.repaired.length > 0) {
+  if (placed.changes.length || enforced.changed || lengthNote || barFix.repaired.length > 0) {
     issues = checkAll(abc); // recompute warnings on the corrected part
   }
 
@@ -595,6 +604,9 @@ Return the FULL corrected part again as the same JSON object, nothing else.`,
     abc,
     melodyWarnings: melodyOut.length ? melodyOut : undefined,
     rangeWarnings: issues.range.length ? issues.range : undefined,
+    // Things the server changed for the better (a melody phrase moved to a
+    // playable octave): shown as information, not as a reason to Regenerate.
+    adjustments: placed.changes.length ? placed.changes : undefined,
     harmonyWarnings: harmony.length ? harmony : undefined,
   });
 }));
@@ -733,6 +745,12 @@ Return THIS SECTION again as the same JSON object (exactly ${n} measure strings,
   // still out of range, then derive the final warning lists from the ABC that
   // actually ships (per-chunk problems may have been fixed along the way).
   let abc = `${header}\n${stitchBody(stitched)}`;
+  // Melody phrases to a playable octave first, whole (as the single-call path).
+  const placed = placeMelodyPhrases(abc, p.instrName, sections);
+  if (placed.changes.length) {
+    abc = placed.abc;
+    console.log(`[part:${p.instrName}] melody placed: ${placed.changes.join("; ")}`);
+  }
   const enforced = enforceRange(abc, p.instrName);
   if (enforced.changed) {
     abc = enforced.abc;
@@ -769,6 +787,7 @@ Return THIS SECTION again as the same JSON object (exactly ${n} measure strings,
     abc,
     melodyWarnings: allMelody.length ? allMelody : undefined,
     rangeWarnings: rangeProblems.length ? rangeProblems : undefined,
+    adjustments: placed.changes.length ? placed.changes : undefined,
     harmonyWarnings: harmony.length ? harmony : undefined,
   };
 }

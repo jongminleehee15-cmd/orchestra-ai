@@ -152,7 +152,7 @@ export default function App() {
     updateParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "loading", abcText: null, errMsg: null } : p)));
     const otherInstruments = expandVoices(selectedInstrs).map((v) => v.name).join(", ");
     try {
-      const { abc, melodyWarnings, rangeWarnings, harmonyWarnings } = await generateInstrumentABC({
+      const { abc, melodyWarnings, rangeWarnings, harmonyWarnings, adjustments } = await generateInstrumentABC({
         songTitle, songArtist, songGenre, songNotes,
         instrName: part.instrName,
         style, density, tempoFeel, key,
@@ -163,7 +163,7 @@ export default function App() {
         instrumentRoles: plan?.instrumentRoles || null,
         contextParts,
       });
-      updateParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc, melodyWarnings, rangeWarnings, harmonyWarnings } : p)));
+      updateParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "done", abcText: abc, melodyWarnings, rangeWarnings, harmonyWarnings, adjustments } : p)));
     } catch (e) {
       updateParts((prev) => prev.map((p, i) => (i === idx ? { ...p, status: "error", errMsg: e.message } : p)));
     }

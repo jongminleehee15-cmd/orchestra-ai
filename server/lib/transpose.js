@@ -297,6 +297,46 @@ export function writtenMelodyFor(melodyAbc, concertKey, instrName) {
   }).join("\n");
 }
 
+// ── Moving notes by whole octaves ────────────────────────────────────────────
+// Move chosen notes of ABC text up or down by octaves without changing any
+// pitch class: each note keeps its letter and alteration, and accidentals are
+// rewritten so every note, moved or not, still reads correctly under ABC's
+// rule that an accidental holds for its letter AND octave until the barline.
+// Naively editing one token breaks that: in "^F2 F2", moving the second F up
+// gives "^F2 f2", and the f loses its sharp. Grace notes follow the same
+// rules as writtenMelodyFor.
+//
+// `fifths` is the key signature the text is written in. `shiftFor(midi,
+// inGrace)` is called for every note in order and returns whole octaves to
+// move it (0 to leave it). Returns { text, moved } (moved = notes changed).
+export function moveOctaves(text, fifths, shiftFor) {
+  if (typeof text !== "string") return { text, moved: 0 };
+  const sig = keyAlters(fifths);
+  let inAcc = {};
+  let outAcc = {};
+  let graceTouched = new Set();
+  let inGrace = false;
+  let moved = 0;
+  const out = text.split("\n").map((line) => {
+    if (/^\s*[A-Za-z]:/.test(line)) return line;
+    return line.replace(MELODY_TOKEN, (all, skip, bar, brace, accTok, letterTok, marks) => {
+      if (skip) return all;
+      if (bar) { inAcc = {}; outAcc = {}; graceTouched = new Set(); return all; }
+      if (brace) { inGrace = brace === "{"; return all; }
+      const p = readPitch(accTok, letterTok, marks, sig, inGrace ? {} : inAcc);
+      const k = shiftFor(p.midi, inGrace) || 0;
+      if (k) moved++;
+      const oct = p.oct + k;
+      const s = { letter: p.letter, oct, alter: p.midi - (60 + 12 * p.oct + LETTER_SEMI[p.letter]), id: `${p.letter}${oct}` };
+      if (inGrace) { graceTouched.add(s.id); return renderPitch(s, sig, null); }
+      return renderPitch(s, sig, outAcc, graceTouched.delete(s.id));
+    });
+  }).join("\n");
+  // Nothing moved: hand back the input untouched (rendering would otherwise
+  // drop redundant accidentals, a change no one asked for).
+  return moved ? { text: out, moved } : { text, moved: 0 };
+}
+
 // A whole chord list (one annotation per bar, possibly "G C") in written pitch.
 // Also splits on "|", so a list that arrives as one "D | A | Bm" string works,
 // and "G|C" is never read as G with the quality "|C".
