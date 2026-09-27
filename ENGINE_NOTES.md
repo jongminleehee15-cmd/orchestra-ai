@@ -857,8 +857,41 @@ eval/score.js). Read bar by bar:
 - Ode Clarinet (both runs): correct reading best, but 44-45%, under the 45%
   bar: poor chord fit, not a transposition error. Note that the no-context
   verification runs of this same part fit at 78-88%. Whether ensemble context
-  lowers transposing parts' chord fit is an open question; a
-  `--no-context` run of ode and elise (4 arrangements) would answer it.
+  lowers transposing parts' chord fit: tested next.
+
+### Context A/B on transposing parts (`eval/runs/noctx`, 2026-09-27)
+
+Ode and Elise, 2 repeats each, `--no-context`, against the baseline's same
+cases (context on). Engine code identical (56d0c61 changed only eval/).
+Criteria written down BEFORE the run: "context hurts transposing parts" is
+supported only if the Ode Clarinet's correct-reading chord fit is higher in
+both no-context runs than in both baseline runs, AND the no-context runs
+have fewer transposition suspects in total.
+
+| | Context on | Context off |
+|---|---|---|
+| Ode Clarinet, chord fit read correctly | 44%, 45% | 54%, 63% |
+| Ode French Horn | 56%, 58% (ties) | 75%, 61% |
+| Elise English Horn | 53%, 45% (r2 partly at concert pitch) | 53%, 89% |
+| Transposition suspects, 4 runs | 6 | 0 |
+
+**Supported, at n = 2 per side.** The report's own rule (ranges must not
+overlap) also calls context-off better on Elise off-chord bars (14.0% vs
+6.7%), Ode dynamics (11 vs 6.5 flagged bars) and suspects in both cases.
+Caveats, all real:
+- Each run makes its own plan, so the two sides are not on the same plans.
+  The one "worse" verdict, Ode's plan tune-off-its-chords (0% vs 7.8%), is a
+  plan property that context cannot touch: it measures how much plans vary.
+- Melody mismatch was higher with context off (Ode 0% vs 12.5%, Elise 8.3%
+  vs 22.9%), within spread, so not a verdict, but it points the other way:
+  context may help melody carriers while hurting transposing accompaniment.
+- The mechanism is still a hypothesis: the ENSEMBLE SO FAR grid lists other
+  parts in SOUNDING note names, which a transposing part can copy at concert
+  pitch (the Elise English Horn r2 bars match that). Not yet tested directly.
+
+Candidate fix, not built: give a transposing part the grid in ITS written
+pitch (as the chords now are), or no grid for its accompaniment bars. Measure
+it against both labels here before keeping it.
 
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 

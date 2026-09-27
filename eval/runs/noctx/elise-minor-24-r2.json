@@ -1,0 +1,208 @@
+{
+  "meta": {
+    "label": "noctx",
+    "caseId": "elise-minor-24",
+    "repeat": 2,
+    "context": false,
+    "date": "2026-09-27T07:07:41.989Z",
+    "gitSha": "56d0c619efa6ab43dca473feb0e6f5b9c6b65cc2",
+    "gitDirty": false,
+    "model": "claude-opus-4-8",
+    "legacy": false,
+    "seconds": 58
+  },
+  "common": {
+    "songTitle": "Für Elise",
+    "songArtist": "Ludwig van Beethoven",
+    "songGenre": "Classical",
+    "songNotes": "",
+    "style": "Mysterious",
+    "density": "Sparse",
+    "tempoFeel": "Moderate",
+    "key": "Am",
+    "timeSignature": "3/8",
+    "bpm": 65,
+    "measures": 24
+  },
+  "voices": [
+    "Oboe",
+    "English Horn",
+    "Tenor Sax",
+    "Cello"
+  ],
+  "plan": {
+    "melodySummary": "The melody travels from the plaintive Oboe through the darker English Horn, sinks into the shadowy Cello, and re-emerges in the Tenor Sax before the Oboe returns for a fading close. The dynamic arc rises from near-silence (!pp!) to a restrained !mp! high point around mm.13-18, then dissolves back into hushed, unresolved stillness.",
+    "sections": [
+      {
+        "label": "Phrase A — First Statement",
+        "measures": "mm.1-6",
+        "melodyCarrier": "Oboe",
+        "countermelody": null,
+        "harmony": [
+          "Cello"
+        ],
+        "bass": "Cello",
+        "rhythm": null,
+        "rests": [
+          "English Horn",
+          "Tenor Sax"
+        ],
+        "notes": "Enter alone and exposed at !pp!, dark and mysterious; let phrase ends hang unresolved. Cello sustains isolated low open fifths only under mm.3-5, otherwise silence."
+      },
+      {
+        "label": "Phrase A' — Handover to Dark Reed",
+        "measures": "mm.7-12",
+        "melodyCarrier": "English Horn",
+        "countermelody": null,
+        "harmony": [
+          "Cello"
+        ],
+        "bass": "Cello",
+        "rhythm": null,
+        "rests": [
+          "Oboe",
+          "Tenor Sax"
+        ],
+        "notes": "Take over in the low, veiled register at !p!, slightly warmer but still shadowy. Cello whispers a sustained fifth on the Am measures only; leave mm.9-10 nearly bare."
+      },
+      {
+        "label": "Phrase B — Low Ascent to High Point",
+        "measures": "mm.13-18",
+        "melodyCarrier": "Cello",
+        "countermelody": "English Horn",
+        "harmony": [],
+        "bass": "Tenor Sax",
+        "rhythm": null,
+        "rests": [
+          "Oboe"
+        ],
+        "notes": "Carry the melody in a rich, dark tenor register, growing to !mp! — the emotional high point. English Horn adds a spare chromatic neighbor-tone line beneath at !p!; Tenor Sax gives a low sustained pedal, never louder than the Cello."
+      },
+      {
+        "label": "Phrase C — Warm Return & Fade",
+        "measures": "mm.19-24",
+        "melodyCarrier": "Tenor Sax",
+        "countermelody": null,
+        "harmony": [
+          "Cello"
+        ],
+        "bass": "Cello",
+        "rhythm": null,
+        "rests": [
+          "Oboe",
+          "English Horn"
+        ],
+        "notes": "Enter at !mp! then diminuendo steadily to !pp! by m.24, breathy and mysterious. Oboe returns only on the final note m.24 as a faint high shimmer; Cello sustains a low open fifth, softer than the Sax throughout."
+      }
+    ],
+    "instrumentRoles": {
+      "Oboe": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.1-6"
+        ],
+        "instruction": "Open the piece alone and exposed at !pp!; play with a thin, distant tone and let phrase endings float unresolved. Tacet through the middle, returning only for a single hushed high note in m.24."
+      },
+      "English Horn": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.7-12"
+        ],
+        "instruction": "Carry the melody in your dark low-middle register at !p!, veiled and mysterious. In mm.13-18 drop to a sparse chromatic neighbor-tone countermelody at !p!, always quieter than the Cello."
+      },
+      "Tenor Sax": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.19-24"
+        ],
+        "instruction": "In mm.13-18 provide a low sustained pedal at !pp!, softer than the Cello melody. Take the melody in mm.19-24 at !mp! with a breathy timbre, diminishing to !pp! by the end."
+      },
+      "Cello": {
+        "primaryRole": "bass",
+        "melodySections": [
+          "mm.13-18"
+        ],
+        "instruction": "For mm.1-12 and 19-24 play only isolated sustained low open fifths under Am/E7 at !pp!, leaving whole measures of silence. In mm.13-18 rise to carry the melody in the dark tenor register, swelling to !mp! as the high point."
+      }
+    },
+    "melodyAbc": "z2 e/^d/ | e/^d/e/B/=d/c/ | A z/ C/E/A/ | B z/ E/^G/B/ | c z/ E/e/^d/ | e/^d/e/B/=d/c/ | A z/ C/E/A/ | B z/ E/c/B/ | A z2 | e/^d/e/B/=d/c/ | A z/ C/E/A/ | B z/ E/^G/B/ | c z/ =d/c/B/ | A/e/c/ A/e/c/ | ^G/e/B/ E/^G/B/ | A/c/e/ a/^g/e/ | f z/ e/d/c/ | B z/ d/c/B/ | A/C/E/ A/c/e/ | ^d z2 | e/^d/e/B/=d/c/ | A/C/E/ ^G/B/E/ | A/,C/E/A/c/e/ | a3 |]",
+    "chords": [
+      "Am",
+      "E7",
+      "Am",
+      "E7",
+      "Am",
+      "E7",
+      "Am",
+      "E7",
+      "Am",
+      "E7",
+      "Am",
+      "E7",
+      "Am",
+      "Am",
+      "E7",
+      "Am",
+      "Dm",
+      "E7",
+      "Am",
+      "E7",
+      "E7",
+      "Am",
+      "Am",
+      "Am"
+    ],
+    "key": "Am",
+    "timeSignature": "3/8",
+    "measures": 24,
+    "source": "library",
+    "libraryId": "fur-elise"
+  },
+  "parts": [
+    {
+      "instrName": "Oboe",
+      "abc": "X:1\nT:Oboe\nM:3/8\nL:1/8\nQ:1/4=65\nK:Am clef=treble\n!pp!z2 e/^d/ | e/^d/e/B/=d/c/ | !pp!A z/ C/E/A/ | B z/ E/^G/B/ |\n!pp!c z/ E/e/^d/ | e/^d/e/B/=d/c/ | z3 | z3 |\nz3 | z3 | z3 | z3 |\nz3 | z3 | z3 | z3 |\nz3 | z3 | z3 | z3 |\nz3 | z3 | z3 | !pp!a3 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "English Horn",
+      "abc": "X:1\nT:English Horn (in F)\nM:3/8\nL:1/8\nQ:1/4=65\nK:Em clef=treble\nz3 | !pp!B2 ^F | z3 | !pp!^F2 B |\nz3 | !pp!B2 ^F | !p!e z/ G/B/e/ | !p!f z/ B/g/f/ |\n!p!e z2 | !p!b/^a/b/f/=a/g/ | !p!e z/ G/B/e/ | !p!f z/ B/^d/f/ |\n!p!e2 ^d | e/=d/e2 | !pp!^d/e/^d E | !p!e2 B |\n!p!c z/ B,/c/ z/ | !pp!^d z/ B,/^A,/ z/ | !pp!B, z/ e/ z | z3 |\nz2 ^F | !pp!e2 B, | !pp!E z2 | !pp!E2 z |]",
+      "melodyWarnings": [
+        "3 bars didn't add up to a full measure and were padded or trimmed to fit so this part stays in time with the rest of the ensemble (Regenerate for a cleaner take)"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Tenor Sax",
+      "abc": "X:1\nT:Tenor Sax (in B♭)\nM:3/8\nL:1/8\nQ:1/4=65\nK:Bm clef=treble\n!pp!B,,3 | ^C3 | B,,3 | ^C3 |\nB,,3 | ^C3 | B,,3 | ^C3 |\nB,,3 | ^C3 | B,,3 | ^C3 |\n!pp!B,2 z | B,3 | ^C,3 | B,3 |\nE,3 | ^C,3 | !mp!B,/D/F/ B/d/f/ | ^e3 |\nf/^e/f/B/=d/c/ | B,/D/F/ ^A,/^C/E/ | B,,/D,/F,/B,/d/f/ | !pp!B3 |]",
+      "melodyWarnings": [
+        "measure 19: melodic contour differs between notes 1 and 2: the tune falls there but your line rises (canonical: A/C/E/ A/c/e/)",
+        "measure 20: expected 2 notes (^d z2) but the part has 1",
+        "measure 21: note 4 sits 2 semitones too low relative to the start of the bar; the tune moves -5 semitones there but your line moves -7 (canonical: e/^d/e/B/=d/c/)",
+        "measure 22: melodic contour differs between notes 1 and 2: the tune falls there but your line rises (canonical: A/C/E/ ^G/B/E/)",
+        "measure 23: melodic contour differs between notes 1 and 2: the tune falls there but your line rises (canonical: A/,C/E/A/c/e/)"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Cello",
+      "abc": "X:1\nT:Cello\nM:3/8\nL:1/8\nQ:1/4=65\nK:Am clef=bass\nz3 | !pp!A,,3 | z3 | !pp!E,,3 |\nz3 | !pp!A,,3 | z3 | !pp!E,,3 |\nz3 | z3 | z3 | !pp!E,,3 |\n!mp!C z/ =D/C/B,/ | A,/e/c/ A,/e/c/ | ^G,/e/B,/ E,/^G,/B,/ | A,/c/e/ A/^G/E/ |\n!mp!F z/ e/d/c/ | B, z/ d/c/B,/ | z3 | !pp!E,,3 |\nz3 | !pp!A,,3 | z3 | !pp!A,,3 |]",
+      "melodyWarnings": [
+        "measure 14: note 2 sits 12 semitones too high relative to the start of the bar; the tune moves 7 semitones there but your line moves 19 (canonical: A/e/c/ A/e/c/)",
+        "measure 15: note 2 sits 12 semitones too high relative to the start of the bar; the tune moves 8 semitones there but your line moves 20 (canonical: ^G/e/B/ E/^G/B/)",
+        "measure 16: melodic contour differs between notes 3 and 4: the tune rises there but your line falls (canonical: A/c/e/ a/^g/e/)",
+        "measure 17: note 3 sits 12 semitones too high relative to the start of the bar; the tune moves -1 semitone there but your line moves 11 (canonical: f z/ e/d/c/)",
+        "measure 18: note 3 sits 12 semitones too high relative to the start of the bar; the tune moves 3 semitones there but your line moves 15 (canonical: B z/ d/c/B/)"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 2: only 0% of this bar's notes (by length) belong to the chord E7, so the part may be playing against the harmony here",
+        "measure 6: only 0% of this bar's notes (by length) belong to the chord E7, so the part may be playing against the harmony here"
+      ]
+    }
+  ]
+}
