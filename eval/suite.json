@@ -1,0 +1,42 @@
+{
+  "about": "Fixed evaluation cases. Change a case only by adding a new id: saved runs are compared by case id, so editing one in place silently breaks every earlier comparison.",
+  "cases": [
+    {
+      "id": "ode-romantic-32",
+      "why": "Library work extended past its 16-bar source; Bb and F parts; two players on one instrument (unison check). The extension bars failed their melody check in all 4 earlier runs.",
+      "libraryId": "ode-to-joy", "measures": 32, "style": "Romantic", "density": "Full", "tempoFeel": "Moderate",
+      "instruments": [{ "name": "Violin", "count": 2 }, { "name": "Clarinet", "count": 1 }, { "name": "French Horn", "count": 1 }, { "name": "Cello", "count": 1 }]
+    },
+    {
+      "id": "canon-baroque-16",
+      "why": "Library work doubled in length; Bb and Eb parts. The Trumpet was mis-transposed in 1 of 3 earlier runs.",
+      "libraryId": "canon-in-d", "measures": 16, "style": "Baroque", "density": "Moderate", "tempoFeel": "Moderate",
+      "instruments": [{ "name": "Flute", "count": 1 }, { "name": "Trumpet", "count": 1 }, { "name": "Alto Sax", "count": 1 }, { "name": "Bassoon", "count": 1 }]
+    },
+    {
+      "id": "yankee-free-16",
+      "why": "Free-text path: no library melody, so the model writes the tune and chords (web-search ground truth).",
+      "free": { "title": "Yankee Doodle", "key": "C", "timeSignature": "4/4", "bpm": 110 },
+      "measures": 16, "style": "Playful", "density": "Moderate", "tempoFeel": "Moderate",
+      "instruments": [{ "name": "Flute", "count": 1 }, { "name": "Clarinet", "count": 1 }, { "name": "Viola", "count": 1 }, { "name": "Tuba", "count": 1 }]
+    },
+    {
+      "id": "elise-minor-24",
+      "why": "Minor key, triple meter (3/8), a 9-bar source extended to 24; F and Bb parts (English Horn, Tenor Sax).",
+      "libraryId": "fur-elise", "measures": 24, "style": "Mysterious", "density": "Sparse", "tempoFeel": "Moderate",
+      "instruments": [{ "name": "Oboe", "count": 1 }, { "name": "English Horn", "count": 1 }, { "name": "Tenor Sax", "count": 1 }, { "name": "Cello", "count": 1 }]
+    },
+    {
+      "id": "rowboat-68-32",
+      "why": "Compound meter (6/8), an 8-bar source quadrupled, so most of the melody is composed extension.",
+      "libraryId": "row-your-boat", "measures": 32, "style": "Cinematic", "density": "Moderate", "tempoFeel": "Moderate",
+      "instruments": [{ "name": "Piccolo", "count": 1 }, { "name": "Clarinet", "count": 1 }, { "name": "Trombone", "count": 1 }, { "name": "Double Bass", "count": 1 }]
+    },
+    {
+      "id": "twinkle-lowbrass-24",
+      "why": "Low-register ensemble (mud check) in a Jazz style; two Bb brass parts.",
+      "libraryId": "twinkle-twinkle", "measures": 24, "style": "Jazz", "density": "Full", "tempoFeel": "Moderate",
+      "instruments": [{ "name": "Trumpet", "count": 1 }, { "name": "Flugelhorn", "count": 1 }, { "name": "Trombone", "count": 1 }, { "name": "Tuba", "count": 1 }, { "name": "Bassoon", "count": 1 }]
+    }
+  ]
+}

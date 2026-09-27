@@ -1,0 +1,213 @@
+{
+  "meta": {
+    "label": "legacy-ctx",
+    "caseId": "yankee-free-16",
+    "repeat": 1,
+    "context": true,
+    "date": "2026-09-26",
+    "gitSha": null,
+    "gitDirty": null,
+    "model": null,
+    "legacy": true,
+    "note": "Generated 2026-09-26 by an earlier ad-hoc script with ensemble context, on the saved plan of the matching legacy-noctx run, BEFORE the written-pitch-chord change; git SHA not recorded. Parts written one at a time in voice order, each hearing the finished parts.",
+    "sourceFile": "ab-yankee-ctx.json"
+  },
+  "common": {
+    "songTitle": "Yankee Doodle",
+    "songArtist": "",
+    "songGenre": "",
+    "songNotes": "",
+    "style": "Playful",
+    "density": "Moderate",
+    "key": "C",
+    "timeSignature": "4/4",
+    "bpm": 110,
+    "measures": 16
+  },
+  "voices": [
+    "Flute",
+    "Clarinet",
+    "Viola",
+    "Tuba"
+  ],
+  "plan": {
+    "melodyAbc": "G2 G2 A2 B2 | c2 B2 c2 z2 | G2 G2 A2 B2 | G4 D4 | G2 G2 A2 B2 | c2 B2 A2 G2 | F2 D2 E2 F2 | G4 z4 | G2 G2 A2 B2 | c2 B2 c2 z2 | G2 G2 A2 B2 | G4 D4 | G2 G2 A2 B2 | c2 B2 A2 G2 | F2 D2 E2 F2 | G4 z4 |]",
+    "chords": [
+      "C",
+      "C",
+      "G7",
+      "C",
+      "C",
+      "C",
+      "G7",
+      "C",
+      "C",
+      "C",
+      "G7",
+      "C",
+      "C",
+      "C",
+      "G7",
+      "C"
+    ],
+    "melodySummary": "The tune bounces playfully from Flute to Clarinet to Viola and finally to Tuba, each handing off fragments across section boundaries with staccato pops and cheeky grace notes. Dynamics climb from a light !mp! opening through a bright !f! peak in mm.9-12, then wink back down to a clipped !mf! finish.",
+    "sections": [
+      {
+        "label": "Verse A",
+        "measures": "mm.1-4",
+        "melodyCarrier": "Flute",
+        "countermelody": "Clarinet",
+        "harmony": [
+          "Clarinet"
+        ],
+        "bass": "Tuba",
+        "rhythm": "Viola",
+        "rests": [],
+        "notes": "Skip out the theme !mp! light staccato, tiny grace note into each phrase, clip the final D short"
+      },
+      {
+        "label": "Verse A repeat",
+        "measures": "mm.5-8",
+        "melodyCarrier": "Clarinet",
+        "countermelody": "Flute",
+        "harmony": [
+          "Viola"
+        ],
+        "bass": "Tuba",
+        "rhythm": "Tuba",
+        "rests": [],
+        "notes": "Take the tune !mf! bouncy and cheeky, Flute tosses back echo fragments, surprise rest on the last bar"
+      },
+      {
+        "label": "Chorus",
+        "measures": "mm.9-12",
+        "melodyCarrier": "Viola",
+        "countermelody": "Flute",
+        "harmony": [
+          "Clarinet"
+        ],
+        "bass": "Tuba",
+        "rhythm": "Clarinet",
+        "rests": [],
+        "notes": "Sing out the refrain !f! at the high point, spirited and detached, quick ornamental turn on the F-G figure"
+      },
+      {
+        "label": "Chorus finale",
+        "measures": "mm.13-16",
+        "melodyCarrier": "Tuba",
+        "countermelody": "Flute",
+        "harmony": [
+          "Clarinet"
+        ],
+        "bass": "Viola",
+        "rhythm": "Clarinet",
+        "rests": [],
+        "notes": "Grab the melody !mf! with a big grinning oom-pah swagger, Flute sprinkles staccato descant, clip the last note off"
+      }
+    ],
+    "instrumentRoles": {
+      "Flute": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.1-4"
+        ],
+        "instruction": "Lead brightly in the opening then become the sparkling top-voice descant elsewhere — grace notes, quick turns, staccato dabs !mp!-!f!, always tossing playful echoes"
+      },
+      "Clarinet": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.5-8"
+        ],
+        "instruction": "Take the tune cheekily in the second verse; elsewhere supply off-beat oom-pah chirps and hiccup syncopations, keeping harmony crisp and detached"
+      },
+      "Viola": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.9-12"
+        ],
+        "instruction": "Provide bouncing off-beat pizzicato-style chords when accompanying, then step forward with a warm !f! chorus melody; hold the low harmony ground when Tuba sings"
+      },
+      "Tuba": {
+        "primaryRole": "bass",
+        "melodySections": [
+          "mm.13-16"
+        ],
+        "instruction": "Anchor a springy oom-pah bass through most of the piece with varied walking approaches, then grab the finale melody with grinning swagger while Viola covers the bass"
+      }
+    },
+    "groundTruth": {
+      "found": true,
+      "key": "G",
+      "timeSignature": "2/4",
+      "bpm": 120,
+      "structure": [
+        "Verse",
+        "Chorus",
+        "Verse",
+        "Chorus"
+      ],
+      "chordProgressions": {
+        "Verse": [
+          "G",
+          "G",
+          "D7",
+          "D7",
+          "G",
+          "G",
+          "D7",
+          "G"
+        ],
+        "Chorus": [
+          "G",
+          "G",
+          "D7",
+          "D7",
+          "G",
+          "G",
+          "D7",
+          "G"
+        ]
+      },
+      "melodyNotes": "Melody begins with a quarter-note pickup (anacrusis) on the words 'Yankee Doodle went to town'; strophic form where verse and chorus (refrain, 'Yankee Doodle keep it up') share the same tune and chord pattern. Rhythm is march-like with dotted-eighth/sixteenth figures typical of fife tunes. Melodic range spans roughly one octave (G to G), with a rising contour into the phrase 'riding on a pony' and a characteristic falling cadence at 'macaroni'.",
+      "confidence": "low",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Yankee_Doodle"
+      ]
+    }
+  },
+  "parts": [
+    {
+      "instrName": "Flute",
+      "abc": "X:1\nT:Flute\nM:4/4\nL:1/8\nQ:1/4=110\nK:C clef=treble\n!mf!g2 g2 a2 b2 | c'2 b2 c'2 z2 | !f!g2 g2 a2 b2 | g4 d4 |\n!mf!.e'2 .c'2 .e'2 .g'2 | !mp!c'2 (b2 a2) g2 | !mf!.d'2 .b2 .d'2 .g2 | !p!g4 z4 |\n!mf!.c'2 .e'2 .g'2 .e'2 | !f!c'2 b2 c'2 z2 | !mf!.d'2 .g'2 .b2 .d'2 | c'4 g4 |\n!mf!.e'2 .g'2 .e'2 .c'2 | !f!c'2 (b2 a2) g2 | !mf!.d'2 .b2 .g2 .b2 | !mp!.c'2 .g2 c'4 |]"
+    },
+    {
+      "instrName": "Clarinet",
+      "abc": "X:1\nT:Clarinet (in B♭)\nM:4/4\nL:1/8\nQ:1/4=110\nK:D clef=treble\n!mp!A,2 z A,2 z A,2 | !mp!B,2 z G,2 z z2 | !mp!B,2 z A,2 z z2 | !mf!A2 A2 B2 c2 |\n!f!d2 c2 B2 A2 | !mf!A4 z4 | !mp!A2 z A2 z c2 | !mp!d2 z B2 z z2 |\n!mf!A4 D4 | !mp!E2 z c2 z A2 | !mp!c2 z B2 z A2 | !f!A2 z D2 z z2 |\nz8 | z8 | z8 | z8 |]",
+      "melodyWarnings": [
+        "the part stopped at measure 12; measures 13-16 are written as rests (Regenerate for a full take)",
+        "measure 5: melodic contour differs between notes 1 and 2: the tune repeats there but your line falls (canonical: G2 G2 A2 B2)",
+        "measure 6: expected 4 notes (c2 B2 A2 G2) but the part has 2",
+        "measure 7: expected 4 notes (F2 D2 E2 F2) but the part has 5",
+        "measure 8: expected 2 notes (G4 z4) but the part has 5"
+      ],
+      "harmonyWarnings": [
+        "measure 2: only 0% of this bar's notes (by length) belong to the chord C, so the part may be playing against the harmony here",
+        "measure 10: only 33% of this bar's notes (by length) belong to the chord C, so the part may be playing against the harmony here"
+      ]
+    },
+    {
+      "instrName": "Viola",
+      "abc": "X:1\nT:Viola\nM:4/4\nL:1/8\nQ:1/4=110\nK:C clef=alto\n!mf!C,2 z E2 z z2 | !mp!C,2 z F,2 z z2 | !mf!D2 z B,2 z z2 | !mp!G,2 z G,2 z z2 |\n!mf!C2 z G,2 z z2 | !mp!E2 z C2 z z2 | !mf!D2 z B,2 z z2 | !mp!C2 z E,2 z z2 |\n!f!G2 G2 A2 B2 | c2 B2 c2 z2 | !f!G2 G2 A2 B2 | G4 D4 |\n!mf!C,2 z E2 z z2 | !mp!E2 z C2 z z2 | !mf!D2 z B,2 z z2 | !mp!C,2 z C2 z z2 |]",
+      "melodyWarnings": [
+        "12 bars didn't add up to a full measure and were padded or trimmed to fit so this part stays in time with the rest of the ensemble (Regenerate for a cleaner take)"
+      ]
+    },
+    {
+      "instrName": "Tuba",
+      "abc": "X:1\nT:Tuba\nM:4/4\nL:1/8\nQ:1/4=110\nK:C clef=bass\n!mf!C,2 z2 G,2 z2 | C,2 z2 G,2 z2 | !mf!G,,2 z2 D,2 z2 | C,2 z2 G,,2 z2 |\n!mf!C,2 z2 E,2 z2 | C,2 z2 C,2 z2 | !mf!G,,2 z2 D,2 z2 | C,2 z2 G,,2 z2 |\n!mf!C,2 E,2 G,2 E,2 | C,2 z2 G,2 z2 | !f!G,,2 D,2 G,2 D,2 | C,2 z2 G,,2 z2 |\n!f!G,2 G,2 A,2 B,2 | C2 B,,2 A,,2 G,,2 | !f!F,2 D,2 E,2 F,2 | !ff!G,4 z4 |]",
+      "melodyWarnings": [
+        "measure 14: note 2 sits 12 semitones too low relative to the start of the bar; the tune moves -1 semitone there but your line moves -13 (canonical: c2 B2 A2 G2)"
+      ]
+    }
+  ]
+}

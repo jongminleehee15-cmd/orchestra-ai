@@ -228,8 +228,9 @@ export function enforceRange(partAbc, instrName) {
 
 // Check every note of a part against the instrument's written range.
 // Returns { ok, problems[] } in the same shape as checkPartMelody.
-// measureOffset shifts reported measure numbers (chunked generation).
-export function checkPartRange(partAbc, instrName, measureOffset = 0) {
+// measureOffset shifts reported measure numbers (chunked generation). `limit`
+// caps the list, as in checkPartBars; the offline evaluation passes Infinity.
+export function checkPartRange(partAbc, instrName, measureOffset = 0, limit = 8) {
   const info = writtenRangeInfo(instrName);
   if (!info) return { ok: true, problems: [] };
   // ±1 semitone slack: our parser ignores the key signature, so a boundary
@@ -248,5 +249,5 @@ export function checkPartRange(partAbc, instrName, measureOffset = 0) {
       }
     }
   });
-  return { ok: problems.length === 0, problems: problems.slice(0, 8) };
+  return { ok: problems.length === 0, problems: problems.slice(0, limit) };
 }

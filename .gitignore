@@ -24,3 +24,6 @@ Thumbs.db
 
 # local Claude Code settings — machine-specific paths, not shared config
 .claude/settings.local.json
+
+# blind listening sessions: personal, and each carries a copy of abcjs
+eval/blind/

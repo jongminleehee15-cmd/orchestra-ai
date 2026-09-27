@@ -191,7 +191,9 @@ export function melodyMeasureSet(melodySections = []) {
 // validation can never disagree about what a valid bar is. Tuplet bars are
 // measured properly rather than skipped — scanMeasure applies the q/p ratio.
 // measureOffset shifts REPORTED measure numbers only (chunked generation).
-export function checkPartBars(partAbc, timeSignature, measureOffset = 0) {
+// `limit` caps the list (the retry prompt wants a short one); the offline
+// evaluation passes Infinity to count every bad bar.
+export function checkPartBars(partAbc, timeSignature, measureOffset = 0, limit = 8) {
   const expected = barUnitsFor(timeSignature);
   const problems = [];
   partMeasures(partAbc).forEach((meas, i) => {
@@ -202,7 +204,7 @@ export function checkPartBars(partAbc, timeSignature, measureOffset = 0) {
       );
     }
   });
-  return { ok: problems.length === 0, problems: problems.slice(0, 8) };
+  return { ok: problems.length === 0, problems: problems.slice(0, limit) };
 }
 
 // Check every melody measure this part is responsible for.

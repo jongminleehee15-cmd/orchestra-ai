@@ -209,7 +209,7 @@ export function chordToneShare(events, sets, barUnits, shift = 0) {
   return sounding <= UNIT_EPSILON ? null : fitting / sounding;
 }
 
-const isFlagged = (share) => share !== null && share < FLAG_BELOW - UNIT_EPSILON;
+export const isFlagged = (share) => share !== null && share < FLAG_BELOW - UNIT_EPSILON;
 
 // Check the bars of one part where it ACCOMPANIES (not melody bars) against
 // the plan's chords. Measure numbers are piece numbers: pass the whole part.

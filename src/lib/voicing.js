@@ -71,7 +71,7 @@ const CLOSE_INTERVAL = 3; // minor third or closer
 // Two or more NON-melody instruments both sitting below C3 within a minor
 // third of each other in the same measure. A single low part is normal
 // orchestration; the collision only exists once every part is on the page.
-function findMud(parts, melodyPlan) {
+function findMud(parts, melodyPlan, limit = 8) {
   const warnings = [];
   const withNotes = parts.map((p) => ({
     instrName: p.instrName,
@@ -84,7 +84,7 @@ function findMud(parts, melodyPlan) {
   }));
   const maxMeasures = Math.max(0, ...withNotes.map((p) => p.measures.length));
 
-  for (let i = 0; i < maxMeasures && warnings.length < 8; i++) {
+  for (let i = 0; i < maxMeasures && warnings.length < limit; i++) {
     const measureNo = i + 1;
     const lowNotes = [];
     for (const part of withNotes) {
@@ -193,7 +193,7 @@ function dynamicRanges(measures) {
 // melody's SOFTEST moment (min) against each other part's LOUDEST moment
 // (max) — only flags when the accompaniment's loudest genuinely exceeds the
 // melody's softest, not an artifact of which mark happens to be last.
-function findDynamicImbalance(parts, melodyPlan) {
+function findDynamicImbalance(parts, melodyPlan, limit = 8) {
   const warnings = [];
   const withInfo = parts.map((p) => ({
     instrName: p.instrName,
@@ -202,7 +202,7 @@ function findDynamicImbalance(parts, melodyPlan) {
   }));
   const maxMeasures = Math.max(0, ...withInfo.map((p) => p.ranges.length));
 
-  for (let i = 0; i < maxMeasures && warnings.length < 8; i++) {
+  for (let i = 0; i < maxMeasures && warnings.length < limit; i++) {
     const measureNo = i + 1;
     const melodyParts = withInfo.filter((p) => p.melodySet.has(measureNo));
     if (melodyParts.length === 0) continue; // no designated carrier this measure — nothing to balance against
@@ -247,13 +247,15 @@ function findClashes(parts, melodyPlan, meta) {
 // App.jsx); melodyPlan supplies instrumentRoles so melody measures are
 // exempted. meta = { key, timeSignature } of the arrangement (concert key),
 // needed to read every part at sounding pitch for the melody-clash check.
-export function analyzeVoicing(parts, melodyPlan, meta = null) {
+// `limit` caps the per-measure checks (mud, dynamics) at 8 warnings for the
+// UI; the offline evaluation (eval/score.js) passes Infinity to count them all.
+export function analyzeVoicing(parts, melodyPlan, meta = null, limit = 8) {
   const usable = parts.filter((p) => p.status === "done" && p.abcText);
   if (usable.length < 2) return [];
   return [
-    ...findMud(usable, melodyPlan),
+    ...findMud(usable, melodyPlan, limit),
     ...findUnison(usable, melodyPlan),
-    ...findDynamicImbalance(usable, melodyPlan),
+    ...findDynamicImbalance(usable, melodyPlan, limit),
     ...findClashes(usable, melodyPlan, meta),
   ];
 }

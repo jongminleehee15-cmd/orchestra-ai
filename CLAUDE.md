@@ -11,10 +11,16 @@ not pushed" line is no longer true). Treat it as history, not current state.
 ## Commands
 
 ```bash
-npm test                  # 138 tests, all pure/offline. Must stay green.
+npm test                  # 149 tests, all pure/offline. Must stay green.
 npm run dev               # Vite (5173) + API (3001)
 npm run build
+node eval/report.mjs <labelA> <labelB>   # score/compare saved runs: offline, free
+node eval/generate.mjs --dry-run         # live eval runs cost money; see eval/README.md
 ```
+
+To claim an engine change improves arrangements, measure it with `eval/`
+(eval/README.md) on a clean commit, with repeats. One run is not evidence:
+the same plan has produced 5 and 8 off-chord bars on consecutive runs.
 
 Live API runs cost real money and need `server/.env`. Before trusting one, see
 the port-3001 caveat under "Environment" below.

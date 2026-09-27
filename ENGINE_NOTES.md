@@ -785,6 +785,45 @@ Not verified in a browser: the score view was not loaded in dev. The client
 build is clean, and `voicing.js` was run end to end in Node over every saved
 run.
 
+## Evaluation harness (`eval/`, 2026-09-27)
+
+Every result above rests on 1 to 4 runs per part. `eval/` makes comparisons
+repeatable: a fixed suite of 6 cases (`eval/suite.json`: library works
+extended past their source, the free-text path, minor key, 3/8 and 6/8, Bb,
+F and Eb parts, a low-brass ensemble), saved runs with provenance, and an
+offline scorer that rescores any run with the checks as they are now. Usage
+and caveats: `eval/README.md`.
+
+**The scorer reproduces this file's numbers.** Run on the saved 2026-09-26
+files (now `eval/runs/legacy-*`), it gives exactly what was recorded above:
+chord flags 5 / 8 / 2 (Canon), 3 of 48 and 2 (Yankee Doodle), 16 / 20 (Ode);
+melody clashes 8 / 6 / 3, 4 / 2, 5 / 21; the three mis-transposed parts; the
+Ode Clarinet's 5 caught melody bars; one Ode bar where the plan's chord
+contradicts its own extension melody. A test pins these, so a change to a
+check that moves them is noticed, not silently re-baselined.
+
+**Correction: dynamics counts were capped.** `analyzeVoicing` stops at 8
+mud and 8 dynamics warnings (right for the UI). The "8 / 8" dynamics warnings
+for Ode above, and Canon's context run's 8, were that cap: uncapped they are
+12 / 13 and 13. The conclusion stands (dynamics are not evidence for or
+against context), but the numbers were floors. The scorer passes a limit of
+Infinity; the UI still stops at 8.
+
+**What it measures and doesn't.** Consistency with the plan (melody, chord
+fit, length, range, melody clashes, coverage, transposition, mud, unison,
+dynamics), per 100 part-bars or per bar that could fail, with no composite
+score. It inherits the checks' false alarms and says nothing about whether an
+arrangement is musically good; `eval/blind.mjs` makes blind A/B listening
+pages for that. A/B verdicts count only when the repeat ranges don't overlap.
+
+**Not yet exercised: live generation.** `eval/generate.mjs` was run only on
+its free paths (the plan and call estimate, the dirty-tree refusal, and a dry
+run that started its own server on a free port and checked health and the
+library). No arrangement has been generated through it yet, so the first
+paid run is also its first real test: start with one case, one repeat. It
+refuses to run on uncommitted code unless `--allow-dirty`, and records the
+commit and model in every run.
+
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 
 A runtime-fetched corpus, same verbatim-melody contract as the library and
