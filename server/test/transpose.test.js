@@ -137,15 +137,131 @@ test("a chord list that arrives as one string is still transposed, not mislabell
   assert.match(violin, /CHORDS \(one per measure\): D \| A \| Bm\n/);
 });
 
-test("the melody instruction keeps the Tenor Sax's octave note; other intervals read as before", () => {
+test("the interval line keeps the Tenor Sax's octave note; other intervals read as before", () => {
   const base = {
     songTitle: "T", style: "Baroque", density: "Full", tempoFeel: "Moderate", key: "D", timeSignature: "4/4",
     bpm: 90, measures: 2, otherInstruments: "x", role: null, melodyAbc: "F2 G2 A2 B2 | d8 |]", chords: ["D", "A"],
   };
   const tenor = buildPartPrompt({ ...base, instrName: "Tenor Sax" });
-  assert.match(tenor, /transpose each of those notes UP by a major 2nd \(an octave-and-a-tone in sound\)\./);
+  assert.match(tenor, /sounds a major 2nd \(an octave-and-a-tone in sound\) LOWER than written\./);
   const trumpet = buildPartPrompt({ ...base, instrName: "Trumpet" });
-  assert.match(trumpet, /sounds a major 2nd \(whole step\) LOWER than written.*UP by a major 2nd \(whole step\)\./);
+  assert.match(trumpet, /sounds a major 2nd \(whole step\) LOWER than written\./);
   const horn = buildPartPrompt({ ...base, instrName: "French Horn" });
-  assert.match(horn, /sounds a perfect 5th LOWER than written.*UP by a perfect 5th\./);
+  assert.match(horn, /sounds a perfect 5th LOWER than written\./);
+});
+
+test("a transposing part is handed the melody in written pitch and never told to transpose it", () => {
+  const base = {
+    songTitle: "T", style: "Baroque", density: "Full", tempoFeel: "Moderate", key: "D", timeSignature: "4/4",
+    bpm: 90, measures: 2, otherInstruments: "x", melodyAbc: "F2 G2 A2 B2 | d8 |]", chords: ["D", "A"],
+    role: { primaryRole: "melody", melodySections: ["mm.1-2"] },
+  };
+  const trumpet = buildPartPrompt({ ...base, instrName: "Trumpet" });
+  // Concert F# G A B | d is written a tone up in E: G# A B C# | e.
+  assert.match(trumpet, /MAIN MELODY AS YOU WRITE IT \(already transposed into your written key of E; do NOT transpose it again; 4\/4, L:1\/8\):\nG2 A2 B2 c2 \| e8 \|\]/);
+  assert.match(trumpet, /EXACT MELODY YOU MUST PLAY \(already in your written key of E: play these pitches and rhythms exactly as shown/);
+  assert.match(trumpet, / {2}measure 1: G2 A2 B2 c2\n {2}measure 2: e8/);
+  assert.match(trumpet, /Everything below is ALREADY in your written key of E, converted for you: the MAIN MELODY, your melody excerpts, the CHORDS and the ensemble\./);
+  for (const gone of [/concert pitch, L:1\/8/, /CONCERT pitches/, /transpose each of those notes/, /rewrite each/, /transposed a major 2nd/]) {
+    assert.ok(!gone.test(trumpet), `a transposing part is never told ${gone}`);
+  }
+  // A non-transposing part still gets the concert melody and its old wording.
+  const violin = buildPartPrompt({ ...base, instrName: "Violin" });
+  assert.match(violin, /MAIN MELODY \(concert key of D, 4\/4, concert pitch, L:1\/8\):\nF2 G2 A2 B2 \| d8 \|\]/);
+  assert.match(violin, /reproduce these pitches\/rhythms, transposed only to fit your range/);
+});
+
+// ── The melody in written pitch ─────────────────────────────────────────────
+import { writtenMelodyFor } from "../lib/transpose.js";
+import { measurePitchEvents } from "../lib/partCheck.js";
+import { splitMelodyIntoMeasures, scanMeasure } from "../lib/abcMelody.js";
+import { readFileSync as readFileSyncM, readdirSync as readdirSyncM } from "node:fs";
+
+// Read a melody with the repo's own parser: per bar, [{ len, pitches }].
+const readBars = (abc, fifths, ts) => splitMelodyIntoMeasures(abc).map((bar) =>
+  measurePitchEvents(bar, ts, fifths).map((e) => ({ len: e.len, pitches: e.pitches })));
+
+function assertWrittenMelody(melodyAbc, key, instr, ts, where) {
+  const written = writtenMelodyFor(melodyAbc, key, instr);
+  const a = readBars(melodyAbc, keyFifths(key), ts);
+  const b = readBars(written, writtenKeyFor(key, instr).fifths, ts);
+  const semis = TRANSPOSING[instr];
+  assert.equal(b.length, a.length, `${where}: bar count`);
+  a.forEach((bar, i) => {
+    assert.equal(b[i].length, bar.length, `${where} bar ${i + 1}: event count\n  ${melodyAbc}\n  ${written}`);
+    bar.forEach((e, j) => {
+      assert.equal(b[i][j].len, e.len, `${where} bar ${i + 1} event ${j + 1}: length`);
+      assert.deepEqual(b[i][j].pitches, e.pitches.map((p) => p + semis), `${where} bar ${i + 1} event ${j + 1}: ${splitMelodyIntoMeasures(melodyAbc)[i]} -> ${splitMelodyIntoMeasures(written)[i]}`);
+    });
+    assert.equal(scanMeasure(splitMelodyIntoMeasures(written)[i], ts).length, scanMeasure(splitMelodyIntoMeasures(melodyAbc)[i], ts).length);
+  });
+  assert.ok(!/[\^_]{3}|=[\^_]|[\^_]=/.test(written), `${where}: no malformed accidentals in ${written}`);
+  return written;
+}
+
+test("named melodies in written pitch, each checked by hand", () => {
+  const cases = [
+    ["f4 e4 | d4 c4 | B4 A4 |]", "D", "Trumpet", "g4 f4 | e4 d4 | c4 B4 |]"], // reads E: G# F# E D# C# B
+    ["c2 d2 e2 f2 | ^f2 g2 f2 e2 |]", "C", "Clarinet", "d2 e2 f2 g2 | ^g2 a2 g2 f2 |]"], // the ^ holds to the barline
+    ["A z/ C/E/A/ | ^G z/ E/^G/B/ |]", "Am", "English Horn", "e z/ G/B/e/ | ^d z/ B/d/f/ |]"],
+    ["!mf!\"Am\"(3cde [CEG]2 {g}f2- f2 | _B,4 z4 |]", "F", "Alto Sax", "!mf!\"Am\"(3abc' [Ace]2 {e'}d'2- d'2 | G4 z4 |]"],
+    ["c2 d2 e2 f2 |]", "C", "Violin", "c2 d2 e2 f2 |]"], // not transposing: unchanged
+    // Concert "C#" is READ with Db's signature by the whole system (keyFifths),
+    // so its melody is respelled from Db, not C#: plain letters, no E-double-flat.
+    ["{d'}C'2 {C,}f2 C [G,C,C]2 |]", "C#", "Trumpet", "{e'}d2 {D,}g2 D [A,=D,D]2 |]"], // =D,: a grace note touched D3 in this bar
+    // A grace note's accidental never carries: the main note states its own.
+    ["{^c}c2 c2 |]", "C", "Clarinet", "{^d}=d2 d2 |]"],
+  ];
+  for (const [m, k, i, want] of cases) assert.equal(writtenMelodyFor(m, k, i), want, `${i} in ${k}`);
+});
+
+test("every real melody sounds exactly the same in written pitch (library + every saved plan)", () => {
+  const seen = new Set();
+  const melodies = [];
+  for (const dir of ["../../data/scores/"]) {
+    for (const f of readdirSyncM(new URL(dir, import.meta.url)).filter((x) => x.endsWith(".abc"))) {
+      const text = readFileSyncM(new URL(dir + f, import.meta.url), "utf8");
+      const key = (text.match(/^K:\s*(\S+)/m) || [])[1];
+      const ts = (text.match(/^M:\s*(\S+)/m) || [])[1];
+      const body = text.split("\n").filter((l) => !/^[A-Za-z]:|^%/.test(l.trim())).join("\n");
+      melodies.push([body, key, ts, f]);
+    }
+  }
+  const runs = new URL("../../eval/runs/", import.meta.url);
+  for (const l of readdirSyncM(runs)) for (const f of readdirSyncM(new URL(`${l}/`, runs)).filter((x) => x.endsWith(".json"))) {
+    const run = JSON.parse(readFileSyncM(new URL(`${l}/${f}`, runs), "utf8"));
+    if (seen.has(run.plan.melodyAbc)) continue;
+    seen.add(run.plan.melodyAbc);
+    melodies.push([run.plan.melodyAbc, run.common.key, run.common.timeSignature, `${l}/${f}`]);
+  }
+  assert.ok(melodies.length >= 25, `found ${melodies.length} melodies`);
+  for (const [m, key, ts, where] of melodies) for (const instr of Object.keys(TRANSPOSING)) assertWrittenMelody(m, key, instr, ts, `${where} ${instr}`);
+});
+
+test("random melodies in every concert key sound exactly the same in written pitch", () => {
+  // Accidentals (held to the barline, cancelled, doubled), octaves, chords,
+  // tuplets, ties, grace notes and decorations, in all 34 concert keys.
+  let seed = 7;
+  const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+  const LET = "CDEFGABcdefgab";
+  const note = () => ["", "", "", "^", "_", "=", "^^", "__"][rnd(8)] + LET[rnd(14)] + ["", "", "", ",", "'"][rnd(5)];
+  const bar = () => {
+    const out = [];
+    for (let k = 0; k < 4; k++) {
+      const r = rnd(10);
+      if (r === 0) out.push(`[${note()}${note()}${note()}]2`);
+      else if (r === 1) out.push(`(3${note()}${note()}${note()}`);
+      else if (r === 2) out.push(`{${note()}}${note()}2`);
+      else if (r === 3) out.push(`!mf!${note()}-${note()}`);
+      else if (r === 4) out.push("z2");
+      else out.push(`${note()}${["", "2", "/", "3/2"][rnd(4)]}`);
+    }
+    return out.join(" ");
+  };
+  let n = 0;
+  for (const instr of Object.keys(TRANSPOSING)) for (const key of CONCERT_KEYS) for (let t = 0; t < 40; t++) {
+    assertWrittenMelody(`${bar()} | ${bar()} | ${bar()} |]`, key, instr, "4/4", `${instr} in ${key} #${t}`);
+    n++;
+  }
+  assert.equal(n, 7 * CONCERT_KEYS.length * 40);
 });

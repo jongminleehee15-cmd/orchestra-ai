@@ -1,5 +1,5 @@
 import { buildMelodyExcerpts, sliceMelody, splitMelodyIntoMeasures, barUnitsFor } from "./lib/abcMelody.js";
-import { writtenKeyFor, conventionalKey, writtenChordsFor } from "./lib/transpose.js";
+import { writtenKeyFor, conventionalKey, writtenChordsFor, writtenMelodyFor } from "./lib/transpose.js";
 import { writtenRangeInfo } from "./lib/ranges.js";
 import { styleBlock } from "./lib/styles.js";
 import { suggestedSections } from "./lib/planCheck.js";
@@ -332,8 +332,14 @@ export function buildPartPrompt({
   const melodySections = role?.melodySections || [];
   const hasMelody = melodySections.length > 0;
 
+  // A transposing part gets the tune already in its WRITTEN pitch, converted in
+  // code (transpose.js), like its chords and ensemble grid: it was the last
+  // thing such a part still had to transpose in its head, and its melody bars
+  // were wrong about twice as often as other parts' (ENGINE_NOTES.md).
+  const partMelody = transposes ? writtenMelodyFor(melodyAbc, key, instrName) : melodyAbc;
+
   // Per-measure exact notes for the measures THIS part must play as melody.
-  const excerpts = hasMelody ? buildMelodyExcerpts(melodyAbc, melodySections) : "";
+  const excerpts = hasMelody ? buildMelodyExcerpts(partMelody, melodySections) : "";
 
   const roleBlock = buildRoleInstruction(instrName, role);
 
@@ -364,8 +370,7 @@ export function buildPartPrompt({
   const transposeBlock = transposes
     ? `TRANSPOSING INSTRUMENT — ${instrName} is a transposing instrument (${label}); the concert key is ${concertKey}:
 - Write every pitch of this part in ${writtenKey}. (The K:${writtenKey} key signature is attached for you — you write only the notes.)
-- Every pitch you write sounds ${intervalName} LOWER than written. The MAIN MELODY and the melody excerpts are at CONCERT pitch: transpose each of those notes UP by ${intervalName}. Keep shapes and rhythms identical — only the written pitch/key changes.
-- The CHORDS are ALREADY in your written key of ${writtenKey} (transposed for you). Build your accompaniment directly from them and do NOT transpose them again.
+- Every pitch you write sounds ${intervalName} LOWER than written. Everything below is ALREADY in your written key of ${writtenKey}, converted for you: the MAIN MELODY, your melody excerpts, the CHORDS and the ensemble. Use them exactly as shown and do NOT transpose any of them again.
 - Use the ${writtenKey} key signature and spell accidentals conventionally so the part is easy to read.
 `
     : "";
@@ -373,8 +378,10 @@ export function buildPartPrompt({
   const sharedContext = melodyAbc
     ? `
 SHARED ARRANGEMENT REFERENCE (every part is built from this — do not contradict it):
-MAIN MELODY (concert key of ${concertKey}, ${timeSignature}, concert pitch, L:1/8):
-${melodyAbc}
+${transposes
+    ? `MAIN MELODY AS YOU WRITE IT (already transposed into your written key of ${writtenKey}; do NOT transpose it again; ${timeSignature}, L:1/8):`
+    : `MAIN MELODY (concert key of ${concertKey}, ${timeSignature}, concert pitch, L:1/8):`}
+${partMelody}
 ${transposes
     // Transposing parts get the chords in WRITTEN pitch, converted in code
     // (transpose.js), instead of transposing concert symbols in their head.
@@ -384,18 +391,18 @@ ${transposes
     : `CHORDS (one per measure): ${Array.isArray(chords) ? chords.join(" | ") : chords || ""}`}
 
 USING THE REFERENCE:
-- In measures where YOU carry the melody, play THE EXACT MELODY shown below${transposes ? `, transposed ${interval} into your written key of ${writtenKey}` : ", transposed only as needed to sit in your instrument's range"} — keep every pitch and rhythm recognizable (light ornamentation OK), do NOT substitute a different tune.
+- In measures where YOU carry the melody, play THE EXACT MELODY shown below${transposes ? `, exactly as shown (already in your written key of ${writtenKey}; move it only by whole octaves if needed to sit in your range)` : ", transposed only as needed to sit in your instrument's range"} — keep every pitch and rhythm recognizable (light ornamentation OK), do NOT substitute a different tune.
 - In all other measures, write a MOVING, idiomatic accompaniment from the chords — do NOT sit on static held roots. Use arpeggiation, stepwise or walking motion, a rhythmic or harmonic countermelody, passing tones and suspensions — while staying register-clear of the melody so the tune still sings through: sit BELOW it, or ABOVE it when your instrument's range lies over the melody (flute, piccolo, violin, mallet percussion…). NEVER go outside your playable range just to get clear of the melody.
 `
     : "";
 
   const excerptBlock = excerpts
     ? `
-EXACT MELODY YOU MUST PLAY (${transposes ? `these are CONCERT pitches — rewrite each ${interval} into ${writtenKey}, keeping the shape and rhythm identical` : "reproduce these pitches/rhythms, transposed only to fit your range"}):
+EXACT MELODY YOU MUST PLAY (${transposes ? `already in your written key of ${writtenKey}: play these pitches and rhythms exactly as shown, moving only by whole octaves if needed to fit your range` : "reproduce these pitches/rhythms, transposed only to fit your range"}):
 ${excerpts}
 ${chunk
-    ? `"measure N" above is a PIECE measure number — since this response starts at piece measure ${chunk.start}, piece measure N is measure N−${chunk.start - 1} of your output. Keep the melody intact${transposes ? ", transposed into your written key" : ""}.`
-    : `Each "measure N" above must appear as that same measure number in your output, melody intact${transposes ? ", transposed into your written key" : ""}.`}
+    ? `"measure N" above is a PIECE measure number — since this response starts at piece measure ${chunk.start}, piece measure N is measure N−${chunk.start - 1} of your output. Keep the melody intact.`
+    : `Each "measure N" above must appear as that same measure number in your output, melody intact.`}
 `
     : "";
 
@@ -451,7 +458,7 @@ ${arrangingBlock}
 ${styleBlock(style, density)}
 ${transposeBlock}
 ${rangeBlock}
-CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `transposed ${interval} into ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower (or higher, for instruments whose range is above the tune), remain inside your playable range, and play the moving accompaniment described above, never a static drone.
+CRITICAL MELODY RULE: When this instrument has the melody, those measures MUST match the exact melody PITCHES and RHYTHMS given above (${transposes ? `as shown, already in ${writtenKey}` : "transposed to range"}), clear and singable in the upper register. Keep the tune exact, but you MAY vary dynamics and articulation between repeated statements so it stays expressive. When it does NOT have the melody, stay out of the melody register — sit lower (or higher, for instruments whose range is above the tune), remain inside your playable range, and play the moving accompaniment described above, never a static drone.
 
 OUTPUT FORMAT — return ONLY this JSON object and nothing else:
 {"measures": ["<measure 1>", "<measure 2>", ...]}

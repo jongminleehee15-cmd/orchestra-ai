@@ -19,7 +19,7 @@ import { loadImports, getImportedWork, searchImports, ingestScore, saveImportCho
 import { checkPartMelody, partMeasures, checkPartBars, melodyMeasureSet } from "./lib/partCheck.js";
 import { checkPartRange, enforceRange } from "./lib/ranges.js";
 import { partHeader, responseToPartAbc } from "./lib/partFormat.js";
-import { writtenKeyFor, keyFifths } from "./lib/transpose.js";
+import { writtenKeyFor, keyFifths, writtenMelodyFor } from "./lib/transpose.js";
 import { CHUNK_THRESHOLD, CHUNK_SIZE, chunkRanges, intersectSections, headerOf, stitchBody, fitMeasureCount, isBetterAttempt, repairPartBars, barRepairNote } from "./lib/chunking.js";
 import { ALLOWED_MEASURES, MAX_INSTRUMENTS, isValidMeasures, sanitizeContextParts, PART_BODY_LIMIT } from "./lib/limits.js";
 import { repairMelodyCoverage } from "./lib/planCheck.js";
@@ -480,9 +480,10 @@ app.post("/api/part", handler(async (req, res) => {
   // none) for a transposing instrument mis-reads every accidental.
   const concertFifths = keyFifths(p.key);
   const writtenFifths = writtenKeyFor(p.key, p.instrName).fifths;
+  const melodyRef = p.melodyAbc ? melodyReference(p) : null;
   const checkAll = (candidate) => {
     const melody = p.melodyAbc && melodySections.length > 0
-      ? checkPartMelody(candidate, p.melodyAbc, melodySections, 0, p.timeSignature, concertFifths, writtenFifths)
+      ? checkPartMelody(candidate, melodyRef.abc, melodySections, 0, p.timeSignature, melodyRef.fifths, writtenFifths)
       : { problems: [] };
     const range = checkPartRange(candidate, p.instrName);
     // A part that stops writing early (or runs long) is a retryable problem,
@@ -598,6 +599,19 @@ Return the FULL corrected part again as the same JSON object, nothing else.`,
   });
 }));
 
+// The melody a part is checked against, and the key signature it is read in.
+// A transposing part's prompt shows the tune in its WRITTEN pitch
+// (writtenMelodyFor), so it is checked against that same text: the verdicts
+// are identical (intervals and rhythm are unchanged; 59 saved transposing
+// parts, 68 flagged bars, no difference), and the notes a failed check quotes
+// back in the retry prompt then match the melody the part was given.
+function melodyReference(p) {
+  const w = writtenKeyFor(p.key, p.instrName);
+  return w.transposes
+    ? { abc: writtenMelodyFor(p.melodyAbc, p.key, p.instrName), fifths: w.fifths }
+    : { abc: p.melodyAbc, fifths: keyFifths(p.key) };
+}
+
 // Informational chord-fit check on the part exactly as it ships, after every
 // repair. Deliberately outside checkAll/isBetterAttempt and the retry prompt:
 // its false-positive rate is unmeasured, and suspensions and passing tones
@@ -621,7 +635,8 @@ function harmonyFor(abc, p, melodySections, concertFifths, writtenFifths) {
 // result stays one coherent line rather than disjoint fragments.
 async function generatePartChunked(p, measures) {
   const sections = p.role?.melodySections || [];
-  const canonical = p.melodyAbc ? splitMelodyIntoMeasures(p.melodyAbc) : [];
+  const melodyRef = p.melodyAbc ? melodyReference(p) : null;
+  const canonical = melodyRef ? splitMelodyIntoMeasures(melodyRef.abc) : [];
   const stitched = [];
   // Built server-side once and reused for every section — the model returns
   // bare measures, so no chunk can contribute a wrong or missing header.
@@ -654,7 +669,7 @@ async function generatePartChunked(p, measures) {
         ? []
         : [`you wrote ${got} measures but this section must contain EXACTLY ${n} (piece measures ${start}-${end})`];
       const melody = p.melodyAbc && localSections.length > 0
-        ? checkPartMelody(candidate, chunkMelody, localSections, offset, p.timeSignature, concertFifths, writtenFifths).problems
+        ? checkPartMelody(candidate, chunkMelody, localSections, offset, p.timeSignature, melodyRef.fifths, writtenFifths).problems
         : [];
       const range = checkPartRange(candidate, p.instrName, offset).problems;
       const bars = checkPartBars(candidate, p.timeSignature, offset).problems;
@@ -738,7 +753,7 @@ Return THIS SECTION again as the same JSON object (exactly ${n} measure strings,
   }
 
   const melodyProblems = p.melodyAbc && sections.length > 0
-    ? checkPartMelody(abc, p.melodyAbc, sections, 0, p.timeSignature, concertFifths, writtenFifths).problems
+    ? checkPartMelody(abc, melodyRef.abc, sections, 0, p.timeSignature, melodyRef.fifths, writtenFifths).problems
     : [];
   const rangeProblems = checkPartRange(abc, p.instrName).problems;
 

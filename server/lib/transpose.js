@@ -1,3 +1,5 @@
+import { keyAlters } from "./symbolic.js";
+
 // Transposing-instrument support.
 //
 // The arrangement is planned and stored at CONCERT pitch (the blueprint melody,
@@ -179,6 +181,120 @@ export function transposeChordSymbol(symbol, concertKey, instrName) {
   const newBass = bass ? moveNote(bass, move.steps, move.semis, move.flip) : "";
   if (!root || (bass && !newBass)) return symbol;
   return `${root}${m[2]}${bass ? `/${newBass}` : ""}`;
+}
+
+// ── The melody in written pitch ──────────────────────────────────────────────
+// Transposing parts were handed the canonical melody at CONCERT pitch and told
+// to transpose it in their heads: the last thing they still had to, once the
+// chords and the ensemble grid came pre-transposed. Their melody bars were
+// wrong about twice as often as other parts' (13.3% vs 7.1% over 20 eval
+// runs, ENGINE_NOTES.md). This rewrites the melody text into the part's
+// written pitch, for the PROMPT only: the plan's melody stays concert, and
+// the melody check still compares the part against it.
+//
+// Only pitch tokens change; lengths, rests, ties, slurs, tuplets, barlines
+// and decorations are copied as they are. Pitches are moved by letter (the
+// same move as the chord symbols, so melody and chords agree) and each note
+// gets exactly the accidental the WRITTEN key signature and the bar so far
+// need, following ABC's rule that an accidental holds for that letter and
+// octave until the barline, as partCheck.js reads it.
+
+const LETTER_SEMI = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+// Regions that carry no pitch: decorations, annotations/chord symbols,
+// +decorations+, inline fields ([K:G]); then a barline; then a pitch token.
+const MELODY_TOKEN = /(![^!]*!|"[^"]*"|\+[^+\s]*\+|\[[A-Za-z]:[^\]]*\])|(\|)|([{}])|(\^\^|__|\^|_|=)?([A-Ga-g])([,']*)/g;
+
+// ABC token → { letter, oct, midi } read against key signature `sig` and the
+// bar's accidentals so far `acc` (updated for an explicit accidental).
+function readPitch(accTok, letterTok, marks, sig, acc) {
+  const letter = letterTok.toUpperCase();
+  let oct = letterTok === letterTok.toLowerCase() ? 1 : 0; // "C" = C4 = octave 0
+  for (const c of marks) oct += c === "'" ? 1 : -1;
+  const id = `${letter}${oct}`;
+  let alter;
+  if (accTok) {
+    alter = { "^^": 2, "^": 1, "=": 0, _: -1, __: -2 }[accTok];
+    acc[id] = alter;
+  } else {
+    alter = id in acc ? acc[id] : sig[letter] || 0;
+  }
+  return { letter, oct, midi: 60 + 12 * oct + LETTER_SEMI[letter] + alter };
+}
+
+// Spell `midi` on letter index `li` (moved, may wrap octaves): the letter,
+// its octave and the alteration it needs, or null when that would be more
+// than a double accidental.
+function spellPitch(li, midi) {
+  const letter = LETTERS[((li % 7) + 7) % 7];
+  // The octave whose natural `letter` sits within 2 semitones of midi.
+  const oct = Math.round((midi - 60 - LETTER_SEMI[letter]) / 12);
+  const alter = midi - (60 + 12 * oct + LETTER_SEMI[letter]);
+  return Math.abs(alter) > 2 ? null : { letter, oct, alter, id: `${letter}${oct}` };
+}
+
+// A spelled pitch as an ABC token. The accidental is written only when the
+// note differs from what a reader already assumes (`acc`, the bar so far,
+// else the signature `sig`), or always when `force`; a written accidental is
+// recorded in `acc`. Pass acc = null for a grace note: against the signature
+// alone, and recording nothing.
+function renderPitch({ letter, oct, alter, id }, sig, acc, force = false) {
+  const assumed = acc && id in acc ? acc[id] : sig[letter] || 0;
+  let accTok = "";
+  if (force || alter !== assumed) {
+    accTok = { 2: "^^", 1: "^", 0: "=", [-1]: "_", [-2]: "__" }[alter];
+    if (acc) acc[id] = alter;
+  }
+  const name = oct >= 1 ? letter.toLowerCase() + "'".repeat(oct - 1) : letter + ",".repeat(-oct);
+  return accTok + name;
+}
+
+// The canonical melody (concert pitch, spelled in concertKey) as `instrName`
+// writes it. A non-transposing instrument gets the text back unchanged.
+//
+// Two rules keep it in step with how the rest of the system reads a melody:
+// - Letters are read with the signature the system reads the melody with
+//   (keyFifths: concert C# is read with Db's), so the respelling is measured
+//   from that signature, not from the key's literal spelling as chord
+//   symbols (which carry their own accidentals) are.
+// - Grace notes {...} are ignored by partCheck's parser, so they neither set
+//   nor rely on the bar's accidentals here: each is written against the key
+//   signature alone, and a main note on a letter+octave a grace note touched
+//   states its accidental outright, so every reader agrees on it.
+export function writtenMelodyFor(melodyAbc, concertKey, instrName) {
+  const t = TRANSPOSE[baseInstrument(instrName)];
+  if (!t || typeof melodyAbc !== "string") return melodyAbc;
+  const readFifths = keyFifths(concertKey);
+  const writtenFifths = writtenKeyFor(concertKey, instrName).fifths;
+  const steps = (((4 * t.fifths) % 7) + 7) % 7; // letters: 2nd = 1, 5th = 4, 6th = 5
+  const semis = (((7 * t.fifths) % 12) + 12) % 12; // semitones: 2, 7, 9
+  const flip = (readFifths + t.fifths - writtenFifths) / 12; // letters of respelling
+  const inSig = keyAlters(readFifths);
+  const outSig = keyAlters(writtenFifths);
+  let inAcc = {};
+  let outAcc = {};
+  let graceTouched = new Set();
+  let inGrace = false;
+  return melodyAbc.split("\n").map((line) => {
+    // Field and lyric lines ("w:", "K:") hold no melody.
+    if (/^\s*[A-Za-z]:/.test(line)) return line;
+    return line.replace(MELODY_TOKEN, (all, skip, bar, brace, accTok, letterTok, marks) => {
+      if (skip) return all;
+      if (bar) { inAcc = {}; outAcc = {}; graceTouched = new Set(); return all; }
+      if (brace) { inGrace = brace === "{"; return all; }
+      const p = readPitch(accTok, letterTok, marks, inSig, inGrace ? {} : inAcc);
+      const target = LETTERS.indexOf(p.letter) + 7 * (p.oct + 10) + steps;
+      // The spelling a respelled key wants first, then the plain move, then
+      // a neighbour letter: never more than a double accidental.
+      for (const li of [target + flip, target, target - 1, target + 1]) {
+        const s = spellPitch(li, p.midi + semis);
+        if (!s) continue;
+        if (inGrace) { graceTouched.add(s.id); return renderPitch(s, outSig, null); }
+        const force = graceTouched.delete(s.id);
+        return renderPitch(s, outSig, outAcc, force);
+      }
+      return all; // unreachable for real pitches; never corrupt the text
+    });
+  }).join("\n");
 }
 
 // A whole chord list (one annotation per bar, possibly "G C") in written pitch.
