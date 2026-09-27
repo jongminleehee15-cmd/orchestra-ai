@@ -418,15 +418,21 @@ ${chunk.prevTail ? `- Your part so far ends with (piece measure${chunk.start > 2
     concertKey: key, timeSignature,
     from: chunk ? chunk.start : 1, to: chunk ? chunk.end : measures,
   });
+  // A transposing part sees the grid in ITS written pitch (ensemble.js), so
+  // the header and the last rule say so; everyone else's text is unchanged.
   const ensembleBlock = ensembleGrid
     ? `
-ENSEMBLE SO FAR — the parts already written, bar by bar, as they SOUND (concert pitch; C4 = middle C; lengths: s sixteenth, e eighth, q quarter, h half, w whole, "." dotted):
+ENSEMBLE SO FAR — the parts already written, bar by bar, ${transposes
+    ? `shown as YOU would WRITE them (already transposed into your written key of ${writtenKey}, so they line up with your notes and your chords; do NOT transpose them again; C4 = middle C as written`
+    : "as they SOUND (concert pitch; C4 = middle C"}; lengths: s sixteenth, e eighth, q quarter, h half, w whole, "." dotted):
 ${ensembleGrid}
 
 Write your part to sound WITH these:
 - Against the MELODY, do not move in 2nds, major 7ths or minor 9ths with it (a brief passing note is fine); prefer 3rds, 6ths, octaves and contrary motion.
 - Do not copy another part's line; fill the registers and rhythms the others leave open, and answer them rather than collide.
-- These are SOUNDING pitches. Your own notes are still written exactly as instructed in this prompt${transposes ? `: in ${writtenKey}, ${interval.replace(/ up.*/, "")} above how they sound` : ""}.
+- ${transposes
+    ? `These are already in YOUR written pitch (${writtenKey}), the same pitch as the CHORDS AS YOU READ THEM. Write your accompaniment against them as shown.`
+    : "These are SOUNDING pitches. Your own notes are still written exactly as instructed in this prompt."}
 `
     : "";
 

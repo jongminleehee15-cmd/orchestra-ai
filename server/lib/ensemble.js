@@ -56,7 +56,11 @@ export function melodySoundingBars(melodyAbc, concertKey, timeSignature) {
 // ── 1. Context for the next part's prompt ────────────────────────────────────
 
 const NAMES = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
-export const midiName = (m) => NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+// Spellings that follow a key signature's direction, for a transposing
+// reader's written-pitch grid: E major reads G#, not Ab; Eb major reads Bb.
+const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const FLAT_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+export const midiName = (m, names = NAMES) => names[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
 
 // Length in L:1/8 units → a short readable value (e = eighth, q = quarter…).
 const LEN_NAMES = { 0.5: "s", 1: "e", 1.5: "e.", 2: "q", 3: "q.", 4: "h", 6: "h.", 8: "w", 12: "w." };
@@ -66,12 +70,15 @@ function lenName(u) {
 }
 
 // One bar of sounding events → "F#5 q, E5 e, [D4 F#4 A4] h, rest q".
-export function describeBar(events) {
+// `shift` raises every pitch by that many semitones before naming it: 0 names
+// sounding pitch; a transposing reader's writtenShiftFor names its written
+// pitch, spelled with `names` to match its key signature.
+export function describeBar(events, shift = 0, names = NAMES) {
   if (events.length === 0) return "(empty)";
   return events.map((e) => {
     const len = lenName(e.end - e.start);
     if (e.pitches.length === 0) return `rest ${len}`;
-    const p = e.pitches.map(midiName);
+    const p = e.pitches.map((m) => midiName(m + shift, names));
     return `${p.length > 1 ? `[${p.join(" ")}]` : p[0]} ${len}`;
   }).join(", ");
 }
@@ -86,9 +93,19 @@ export function describeBar(events) {
 //
 // Returns "" when there is nothing to show, so a request without context
 // produces exactly the prompt it did before.
+//
+// For a TRANSPOSING reader every pitch is shown as that reader would WRITE it
+// (sounding + its written shift), the way its chords are handed over. At
+// sounding pitch, live, a transposing part copied the grid at concert pitch
+// into its accompaniment (Elise English Horn, ENGINE_NOTES.md). A non-
+// transposing reader's shift is 0, so its grid is unchanged.
 export function renderEnsembleContext({ contextParts, forInstr, instrumentRoles, melodyAbc, concertKey, timeSignature, from, to }) {
   const parts = (contextParts || []).filter((p) => p && p.instrName !== forInstr);
   if (parts.length === 0) return "";
+  const shift = writtenShiftFor(forInstr);
+  // Sounding pitch keeps its long-standing spelling; a written-pitch grid is
+  // spelled in the direction of the reader's key signature (C/Am: sharps).
+  const names = shift ? (writtenKeyFor(concertKey, forInstr).fifths < 0 ? FLAT_NAMES : SHARP_NAMES) : NAMES;
   const bars = parts.map((p) => ({
     instrName: p.instrName,
     bars: partSoundingBars(p.abc, p.instrName, concertKey, timeSignature),
@@ -104,11 +121,11 @@ export function renderEnsembleContext({ contextParts, forInstr, instrumentRoles,
     const carrier = carrierOf(n);
     const carrierWritten = bars.some((b) => b.instrName === carrier);
     if (!carrierWritten && tune[n - 1] && carrier !== forInstr) {
-      lines.push(`  melody (${carrier ? `${carrier}, not written yet; ` : ""}canonical tune, its octave may differ): ${describeBar(tune[n - 1])}`);
+      lines.push(`  melody (${carrier ? `${carrier}, not written yet; ` : ""}canonical tune, its octave may differ): ${describeBar(tune[n - 1], shift, names)}`);
     }
     for (const b of bars) {
       if (!b.bars[n - 1]) continue;
-      lines.push(`  ${b.instrName}${b.melody.has(n) ? " (MELODY)" : ""}: ${describeBar(b.bars[n - 1])}`);
+      lines.push(`  ${b.instrName}${b.melody.has(n) ? " (MELODY)" : ""}: ${describeBar(b.bars[n - 1], shift, names)}`);
     }
   }
   return lines.join("\n");

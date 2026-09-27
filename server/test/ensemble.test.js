@@ -178,8 +178,21 @@ test("the part prompt carries the grid only when there are finished parts", () =
     instrumentRoles: { Flute: { melodySections: ["mm.1-2"] } },
   });
   assert.match(withCtx, /ENSEMBLE SO FAR/);
-  assert.match(withCtx, / {2}Flute \(MELODY\): E5 q, F5 q, G5 q, A5 q/);
-  assert.match(withCtx, /in D, a major 2nd \(whole step\) above how they sound/, "the transposing part is told how its own notes relate");
+  // The Clarinet reads in D: the Flute's sounding E F G A is shown as the
+  // Clarinet would write it, a tone up, spelled in D's sharps.
+  assert.match(withCtx, / {2}Flute \(MELODY\): F#5 q, G5 q, A5 q, B5 q/);
+  assert.match(withCtx, /shown as YOU would WRITE them \(already transposed into your written key of D/);
+  assert.match(withCtx, /These are already in YOUR written pitch \(D\)/);
+  assert.ok(!withCtx.includes("These are SOUNDING pitches"), "a transposing reader is never told the grid sounds as shown");
+  // A non-transposing reader keeps the sounding-pitch grid and wording.
+  const violin = buildPartPrompt({
+    ...base, instrName: "Violin",
+    contextParts: [{ instrName: "Flute", abc: abc("e2 f2 g2 a2 | c'8 |]") }],
+    instrumentRoles: { Flute: { melodySections: ["mm.1-2"] } },
+  });
+  assert.match(violin, / {2}Flute \(MELODY\): E5 q, F5 q, G5 q, A5 q/);
+  assert.match(violin, /as they SOUND \(concert pitch; C4 = middle C/);
+  assert.match(violin, /These are SOUNDING pitches\. Your own notes are still written exactly as instructed in this prompt\./);
   // A chunked prompt shows only its own window.
   const chunked = buildPartPrompt({
     ...base, measures: 2, chunk: { start: 2, end: 2, prevTail: null },
@@ -187,4 +200,29 @@ test("the part prompt carries the grid only when there are finished parts", () =
     instrumentRoles: { Flute: { melodySections: ["mm.1-2"] } },
   });
   assert.ok(!/\nm1:/.test(chunked) && /\nm2:/.test(chunked));
+});
+
+test("a transposing reader sees the grid in its own written pitch, octave and spelling included", () => {
+  const ctx = (forInstr, concertKey, parts) => renderEnsembleContext({
+    contextParts: parts, forInstr, instrumentRoles: { Violin: { melodySections: ["mm.1"] } },
+    melodyAbc: "C8 |]", concertKey, timeSignature: "4/4", from: 1, to: 1,
+  }).split("\n")[1];
+  const violin = (body, key) => [{ instrName: "Violin", abc: abc(body, key) }];
+  // Concert C E G (sounding C4 E4 G4) as each reader writes it.
+  assert.equal(ctx("Viola", "C", violin("C2 E2 G4", "C")), "  Violin (MELODY): C4 q, E4 q, G4 h", "non-transposing: sounding pitch");
+  assert.equal(ctx("Clarinet", "C", violin("C2 E2 G4", "C")), "  Violin (MELODY): D4 q, F#4 q, A4 h", "B-flat: a tone up, D major's sharps");
+  assert.equal(ctx("French Horn", "C", violin("C2 E2 G4", "C")), "  Violin (MELODY): G4 q, B4 q, D5 h", "F: a fifth up");
+  assert.equal(ctx("Alto Sax", "C", violin("C2 E2 G4", "C")), "  Violin (MELODY): A4 q, C#5 q, E5 h", "E-flat: a sixth up, A major's sharps");
+  // A flat written key gets flats: concert Ab reads Bb on a clarinet.
+  assert.equal(ctx("Clarinet", "Ab", violin("A2 c2 e4", "Ab")), "  Violin (MELODY): Bb4 q, D5 q, F5 h");
+  // A transposing CONTEXT part read by a transposing reader: the trumpet's
+  // written D (sounding C) is shown to the horn as the horn writes C: G. The
+  // unwritten carrier's canonical tune (concert C) is shifted the same way.
+  const grid = renderEnsembleContext({
+    contextParts: [{ instrName: "Trumpet", abc: abc("D8", "D") }], forInstr: "French Horn",
+    instrumentRoles: { Violin: { melodySections: ["mm.1"] } },
+    melodyAbc: "C8 |]", concertKey: "C", timeSignature: "4/4", from: 1, to: 1,
+  }).split("\n");
+  assert.equal(grid[1], "  melody (Violin, not written yet; canonical tune, its octave may differ): G4 w");
+  assert.equal(grid[2], "  Trumpet: G4 w");
 });
