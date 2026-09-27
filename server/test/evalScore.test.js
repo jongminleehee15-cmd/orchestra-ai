@@ -182,3 +182,13 @@ test("blind-test scores parse, play the right parts, and name no version or song
   assert.ok(tune.lines.length > 0);
   assert.deepEqual(tune.warnings || [], [], "abcjs reads the assembled score without structural warnings");
 });
+
+test("a part the server filled with rests counts as missing, not as a clean part", () => {
+  const run = faulty();
+  run.parts[1] = { instrName: "Cello", abc: hdr("Cello", "C", "bass") + "z8 | z8 | z8 | z8 |]" };
+  const { metrics: m } = scoreRun(run);
+  assert.equal(m.missingParts, 1);
+  assert.equal(m.harmonyChecked, 4, "only the Clarinet's bars are checked");
+  // The one live case (writtenctx Elise r1 English Horn) is counted.
+  assert.equal(scoreRun(loadRun("writtenctx", "elise-minor-24-r1.json")).metrics.missingParts, 1);
+});

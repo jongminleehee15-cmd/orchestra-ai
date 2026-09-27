@@ -83,7 +83,11 @@ export function scoreRun(run) {
   const roles = plan.instrumentRoles || {};
   const chords = Array.isArray(plan.chords) ? plan.chords : [];
   const concertFifths = keyFifths(key);
-  const parts = (run.parts || []).filter((p) => typeof p.abc === "string" && partMeasures(p.abc).length > 0);
+  // A part counts only if it plays: the server fills a part whose model
+  // output was unusable with rests (and warns), and 24 bars of silence is a
+  // missing part, not a present one with a clean score.
+  const plays = (abc) => partMeasures(abc).some((b) => measurePitchEvents(b, ts, 0).some((e) => e.pitches.length > 0));
+  const parts = (run.parts || []).filter((p) => typeof p.abc === "string" && plays(p.abc));
 
   const m = {
     parts: (run.voices || run.parts || []).length,

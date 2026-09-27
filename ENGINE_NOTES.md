@@ -889,9 +889,40 @@ Caveats, all real:
   parts in SOUNDING note names, which a transposing part can copy at concert
   pitch (the Elise English Horn r2 bars match that). Not yet tested directly.
 
-Candidate fix, not built: give a transposing part the grid in ITS written
-pitch (as the chords now are), or no grid for its accompaniment bars. Measure
-it against both labels here before keeping it.
+### Written-pitch grid for transposing parts (`eval/runs/writtenctx`, 2026-09-27)
+
+Built (fe1feec): a transposing part now sees ENSEMBLE SO FAR, tune included,
+as it would WRITE it (shifted by its written interval, octave included,
+spelled in its key signature's direction), matching its written-pitch
+chords. Other parts' prompts are byte-identical. Criteria were fixed in that
+commit's message before the run; all three are met, so the fix stays.
+
+| Ode + Elise, 4 runs each | Old grid | No context | Written-pitch grid |
+|---|---|---|---|
+| Ode Clarinet, chord fit read correctly | 44%, 45% | 54%, 63% | 62%, 79% |
+| Ode French Horn | 56%, 58% | 75%, 61% | 89%, 80% |
+| Transposition suspects | 6 | 0 | 0 |
+| Accompaniment off-chord | 16.2% | 13.3% | 7.4% |
+| Melody clashes per 100 part-bars | 5.1 | 4.9 | 0.6 |
+| Melody mismatch | 4 of 112 | 19 of 112 | 10 of 106 |
+
+Against the old grid the report calls it better on off-chord bars (both
+cases), melody clashes (Ode), dynamics (Elise) and suspects (both). Three
+"worse": two are the plan's tune off its own chords, which the plan decides
+before any part is written, so plan-to-plan variance, not this change. The
+third is real and open: **Ode melody mismatch 0% vs 3-12%** (the Clarinet
+slipping a semitone in 4 melody bars, Violin 1 in 1). No-context runs slipped
+too (12.5%), so the baseline's 0% may be luck; n = 2 cannot say. Watch it.
+
+**A pipeline bug found by this run (fixed).** One English Horn part shipped
+as 24 bars of rests. Its first attempt was real music with 8 bars half an
+eighth short (which the bar repair pads) and some low notes; the repair
+retry returned nothing usable. `isBetterAttempt` counted structural problems
+per MESSAGE, so the empty retry ("you wrote 0 measures": 1) beat the real
+attempt (8 short bars) and silence shipped. A wrong length now counts once
+per measure to pad or cut (`lengthOff`), so that retry scores 24 and loses.
+The first such case in 118 saved parts; the grid change did not cause it.
+The scorer also now counts an all-rests part as missing, not as clean.
 
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 
