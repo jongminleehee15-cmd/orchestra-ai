@@ -35,6 +35,15 @@ export const VOICING_KINDS = {
 // A transposing part's accompaniment read three ways. It counts as correctly
 // transposed when the correct reading fits the chords best AND at least 45%
 // (the success criterion fixed before the 2026-09-26 live run).
+//
+// This flags a SUSPECT, not a proven error. On the 2026-09-27 baseline it
+// flagged three different things: accompaniment really written at concert
+// pitch (Elise English Horn r2, bars 14-17), a tie between readings (Ode
+// French Horn, 56% = 56%: in D major many chords a fifth apart share notes),
+// and a correct transposition with poor chord fit (Ode Clarinet, 44-45%, best
+// of the three). A per-bar vote was tried and was no better: it flagged the
+// Ode Horn the notes record as correct. So the rule stays as fixed in advance,
+// and the report prints each suspect's readings to be checked by hand.
 export const TRANSPOSED_OK_MIN = 0.45;
 
 function meanShare(abc, chords, ts, writtenFifths, melodySet, shift) {
@@ -178,7 +187,9 @@ export const REPORT_METRICS = [
   { key: "rangeNotes", label: "out-of-range notes /100 part-bars", per: "partBars" },
   { key: "uncoveredBars", label: "bars with no melody", per: null },
   { key: "planChordFlagged", label: "plan: tune off its own chords, % bars", per: "planChordChecked" },
-  { key: "mistransposed", label: "mis-transposed parts", per: null },
+  // A suspect, not a verdict: see the comment on TRANSPOSED_OK_MIN. The
+  // report lists each suspect part's three readings for a by-hand check.
+  { key: "mistransposed", label: "transposition suspect (listed below)", per: null },
   { key: "mud", label: "muddy low voicings", per: null },
   { key: "unison", label: "unison doublings", per: null },
   { key: "dynamics", label: "melody drowned (dynamics)", per: null },

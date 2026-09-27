@@ -824,6 +824,42 @@ paid run is also its first real test: start with one case, one repeat. It
 refuses to run on uncommitted code unless `--allow-dirty`, and records the
 commit and model in every run.
 
+### First baseline (`eval/runs/baseline`, 2026-09-27)
+
+All 6 cases x 2 repeats on commit 10a45ae (clean tree), claude-opus-4-8,
+ensemble context on. 12 of 12 arrangements, no failed part. Pooled over
+1,264 part-bars (`node eval/report.mjs baseline` for per-case ranges):
+
+| Measure | Baseline |
+|---|---|
+| Melody bars not matching the tune | 21 of 288 (7.3%); Twinkle 8-29%, Canon 6-25% |
+| Accompaniment bars off their chord | 80 of 818 (9.8%); Ode 16-18%, Elise 11-17% |
+| Melody clashes | 4.0 per 100 part-bars; Ode 6-9 |
+| Plan's tune off its own chords | 9 of 288 bars (3.1%), Canon and Yankee up to 19% in one run |
+| Melody marked softer than accompaniment | 93 bars, the most frequent flag in every case |
+| Range, bar length, part length, coverage, mud, unison | 0 (one bad bar in one Twinkle run) |
+
+What this suggests, to be tested rather than assumed: the structural checks
+(length, range, coverage) now hold; the open problems are melody accuracy in
+the carriers, chord fit in accompaniment, written dynamics, and the plan's
+own harmony (the item already open above).
+
+**Transposition suspects: 6 of 20 transposing parts, 1 confirmed by hand.**
+The metric flags a suspect, not an error (see TRANSPOSED_OK_MIN in
+eval/score.js). Read bar by bar:
+- Elise English Horn r2: bars 14-17 are written at CONCERT pitch (`C E A`
+  over Am, `E G# B` over E7, 100% fit unshifted), bar 13 correctly. The old
+  defect, back in an F part, even with written-pitch chords in its prompt.
+  Unverified hypothesis: the ENSEMBLE SO FAR grid lists finished parts in
+  sounding note names, and the English Horn was written right after the Oboe.
+- Elise English Horn r1: 3 bars only, one of each outcome. Not evidence.
+- Ode French Horn (both runs): a tie, 56% = 56%. Not evidence.
+- Ode Clarinet (both runs): correct reading best, but 44-45%, under the 45%
+  bar: poor chord fit, not a transposition error. Note that the no-context
+  verification runs of this same part fit at 78-88%. Whether ensemble context
+  lowers transposing parts' chord fit is an open question; a
+  `--no-context` run of ode and elise (4 arrangements) would answer it.
+
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 
 A runtime-fetched corpus, same verbatim-melody contract as the library and

@@ -63,6 +63,18 @@ for (const caseId of caseIds) {
     rows[spec.label] = row;
   }
   console.table(rows);
+  // Transposition suspects need a by-hand look (see TRANSPOSED_OK_MIN in
+  // score.js): print each one's three readings of its accompaniment.
+  const pct = (x) => (x === null ? "-" : `${Math.round(x * 100)}%`);
+  for (const d of data) {
+    for (const r of d.byCase.get(caseId) || []) {
+      for (const p of r.perPart) {
+        if (!p.transposition || p.transposition.ok) continue;
+        const t = p.transposition;
+        console.log(`  transposition suspect: ${d.label} ${r.file} ${p.instrName}: chord fit read correctly ${pct(t.right)}, at concert pitch ${pct(t.none)}, shifted twice ${pct(t.twice)}`);
+      }
+    }
+  }
 }
 
 if (data.length === 2) {
