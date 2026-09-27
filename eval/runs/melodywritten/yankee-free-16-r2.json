@@ -1,0 +1,217 @@
+{
+  "meta": {
+    "label": "melodywritten",
+    "caseId": "yankee-free-16",
+    "repeat": 2,
+    "context": true,
+    "date": "2026-09-27T20:57:21.844Z",
+    "gitSha": "27f35241affd4a1af0416c93d4dcc0778d23e0a4",
+    "gitDirty": false,
+    "model": "claude-opus-4-8",
+    "legacy": false,
+    "seconds": 27,
+    "plansFrom": "baseline",
+    "planFromSha": "10a45ae8da9897e614ca9cc65e5ef0d77424f569"
+  },
+  "common": {
+    "songTitle": "Yankee Doodle",
+    "songArtist": "",
+    "songGenre": "",
+    "songNotes": "",
+    "style": "Playful",
+    "density": "Moderate",
+    "tempoFeel": "Moderate",
+    "key": "C",
+    "timeSignature": "4/4",
+    "bpm": 110,
+    "measures": 16
+  },
+  "voices": [
+    "Flute",
+    "Clarinet",
+    "Viola",
+    "Tuba"
+  ],
+  "plan": {
+    "melodyAbc": "G2 G2 A2 B2 | c2 B2 G2 E2 | G2 G2 A2 B2 | G4 F4 | G2 G2 A2 B2 | c2 B2 A2 G2 | E2 c2 B2 G2 | A2 G4 z2 | c2 c2 c2 B2 | A2 A2 G4 | c2 c2 B2 A2 | G4 G2 z2 | c2 c2 c2 B2 | A2 A2 G2 c2 | E2 c2 B2 G2 | A2 G4 z2 |]",
+    "chords": [
+      "C",
+      "G",
+      "C",
+      "G",
+      "C",
+      "F",
+      "G",
+      "C",
+      "F",
+      "C",
+      "F",
+      "C",
+      "F",
+      "C",
+      "G",
+      "C"
+    ],
+    "melodySummary": "The recognizable Yankee Doodle tune bounces playfully between all four instruments, opening bright in the Flute, tossed to the Clarinet, then handed down to the Tuba and Viola before returning up top for a peppy finish. The dynamic arc rises from a light mp verse through a punchy mf chorus, dips playfully in the third section, then climbs to an f high point in the final chorus before a clipped, staccato button ending.",
+    "sections": [
+      {
+        "label": "Verse A",
+        "measures": "mm.1-4",
+        "melodyCarrier": "Flute",
+        "countermelody": null,
+        "harmony": [
+          "Clarinet"
+        ],
+        "bass": "Tuba",
+        "rhythm": null,
+        "rests": [
+          "Viola"
+        ],
+        "notes": "!mp! Bright and light, crisp staccato dots on every quarter, clip the phrase ending short with a tiny grin"
+      },
+      {
+        "label": "Verse A'",
+        "measures": "mm.5-8",
+        "melodyCarrier": "Clarinet",
+        "countermelody": "Flute",
+        "harmony": [
+          "Viola"
+        ],
+        "bass": "Tuba",
+        "rhythm": null,
+        "rests": [],
+        "notes": "!mf! Take the tune with a chuckling staccato; Flute tosses back grace-note echoes above you"
+      },
+      {
+        "label": "Chorus",
+        "measures": "mm.9-12",
+        "melodyCarrier": "Tuba",
+        "countermelody": "Clarinet",
+        "harmony": [
+          "Viola"
+        ],
+        "bass": "Viola",
+        "rhythm": null,
+        "rests": [
+          "Flute"
+        ],
+        "notes": "!mp! Feature the melody down low, bouncy and comical; keep it detached, hiccup slightly on the rests"
+      },
+      {
+        "label": "Chorus (full)",
+        "measures": "mm.13-16",
+        "melodyCarrier": "Viola",
+        "countermelody": "Flute",
+        "harmony": [
+          "Clarinet"
+        ],
+        "bass": "Tuba",
+        "rhythm": null,
+        "rests": [],
+        "notes": "!f! High point — sing the tune out with spirited spiccato, Flute adds a quick ornamental turn, clip the final note hard"
+      }
+    ],
+    "instrumentRoles": {
+      "Flute": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.1-4"
+        ],
+        "instruction": "Lead the opening bright and staccato at !mp!; elsewhere toss grace-note echoes and quick ornamental turns above the melody, clipping phrase ends short"
+      },
+      "Clarinet": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.5-8"
+        ],
+        "instruction": "Chuckling staccato melody at !mf! in the second verse; otherwise supply off-beat oom-pah chirps and a light countermelody, never a steady repeated figure"
+      },
+      "Tuba": {
+        "primaryRole": "bass",
+        "melodySections": [
+          "mm.9-12"
+        ],
+        "instruction": "Anchor the bass with a bouncing oom-pah on off-beats; take the comical low melody in the chorus at !mp!, then return to a varied, walking-style bass under the finale at !f!"
+      },
+      "Viola": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.13-16"
+        ],
+        "instruction": "Rest at first, then add inner off-beat chords with pizzicato bounce; seize the melody with spirited spiccato at !f! for the final chorus high point, doubling as low support in mm.9-12"
+      }
+    },
+    "groundTruth": {
+      "found": true,
+      "key": "C",
+      "timeSignature": "2/4",
+      "bpm": 100,
+      "structure": [
+        "Verse",
+        "Chorus",
+        "Verse",
+        "Chorus"
+      ],
+      "chordProgressions": {
+        "Verse": [
+          "C",
+          "G",
+          "C",
+          "G",
+          "C",
+          "F",
+          "G",
+          "C"
+        ],
+        "Chorus": [
+          "F",
+          "C",
+          "F",
+          "C",
+          "G",
+          "C"
+        ]
+      },
+      "melodyNotes": "Melody begins with a quarter-note pickup ('Yankee') into the downbeat; built on simple stepwise/arpeggiated eighth- and quarter-note figures in AABB phrase structure (bars 1-4 mirror 5-8, bars 9-12 mirror 13-16); range approx. one octave (C4-C5 in key of C); characteristic hook is the opening rising figure on 'Yankee Doodle went to town', echoed melodically in the chorus 'Yankee Doodle keep it up'.",
+      "confidence": "medium",
+      "sources": [
+        "https://www.traditionalsongs.org/yankee-doodle.html",
+        "https://tabs.ultimate-guitar.com/tab/misc-traditional/yankee-doodle-chords-1754875",
+        "https://getsongbpm.com/song/yankee-doodle/KvN48",
+        "https://www.musicallthetime.com/yankee-doodle-sheet-music.html"
+      ]
+    }
+  },
+  "parts": [
+    {
+      "instrName": "Flute",
+      "abc": "X:1\nT:Flute\nM:4/4\nL:1/8\nQ:1/4=110\nK:C clef=treble\n!mp!.G2 .G2 .A2 .B2 | !mp!.c2 .B2 .G2 .E2 | !mf!.G2 .G2 .A2 .B2 | !mf!.G4 .F4 |\n!mf!{a}g2 e2 c2 z2 | !f!f2 a2 c'2 a2 | !mf!b2 d'2 g2 b2 | !f!c'2 e'2 c'4 |\n!mp!.a2 z2 .f2 z2 | !mf!e2 c2 e2 g2 | !mp!.a2 z2 .g2 z2 | !mf!e2 g2 c'2 z2 |\n!f!f2 a2 f2 a2 | !f!e2 g2 c'2 e2 | !mf!d2 g2 b2 d'2 | !f!c'2 z2 g4 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Clarinet",
+      "abc": "X:1\nT:Clarinet (in B♭)\nM:4/4\nL:1/8\nQ:1/4=110\nK:D clef=treble\n!mp!.A,2 z2 .E2 z2 | !mp!.E2 z2 .A,2 z2 | !mp!.A,2 z2 .F2 z2 | !mp!.E2 z2 .C2 z2 |\n!mf!.A2 .A2 .B2 .c2 | !mf!.d2 .c2 .B2 .A2 | !f!.F2 .d2 .c2 .A2 | !f!.B2 A4 z2 |\n!mp!.G,2 z2 .B,2 z2 | !mp!.D2 z2 .F2 z2 | !mp!.G,2 z2 .B,2 z2 | !mp!.A,2 z2 .E2 z2 |\n!mf!.B,2 .d2 .B,2 .d2 | !mf!.d2 .A2 .F2 .A2 | !f!.E2 .A2 .C2 .A2 | !f!.d2 .A2 z4 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Viola",
+      "abc": "X:1\nT:Viola\nM:4/4\nL:1/8\nQ:1/4=110\nK:C clef=alto\nz8 | z8 | z8 | z8 |\n!mp!.E,2 z2 .G,2 z2 | .F,2 z2 .A,2 z2 | .E,2 z2 .G,2 z2 | .E,2 z2 .C,2 z2 |\n!mf!.C2 .C2 .C2 .B,2 | .A,2 .A,2 .G,4 | .C2 .C2 .B,2 .A,2 | .G,4 .G,2 z2 |\n!f!.c2 .c2 .c2 .B2 | .A2 .A2 .G2 .c2 | .E2 .c2 .B2 .G2 | .A2 .G4 z2 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Tuba",
+      "abc": "X:1\nT:Tuba\nM:4/4\nL:1/8\nQ:1/4=110\nK:C clef=bass\n!mf!C,,2 z G,,2 G,,2 z | G,,2 z D,2 D,2 z | C,,2 z E,2 E,2 z | !mf!G,,2 z D,2 D,2 z |\n!mf!C,2 z G,,2 G,,2 z | F,,2 z C,2 C,2 z | !f!G,,2 z D,2 D,2 z | !f!C,2 z G,,2 C,2 z |\n!mp!C2 C2 C2 B,2 | A,2 A,2 G,4 | C2 C2 B,2 A,2 | G,4 G,2 z2 |\n!f!F,,2 A,, C, A,, z2 z | C, C,, E, C, z4 | !f!G,, D, G,, B,, z4 | C,2 G,, E, C,2 z z |]",
+      "melodyWarnings": [
+        "4 bars didn't add up to a full measure and were padded or trimmed to fit so this part stays in time with the rest of the ensemble (Regenerate for a cleaner take)"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    }
+  ]
+}

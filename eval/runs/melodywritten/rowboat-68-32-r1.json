@@ -1,0 +1,202 @@
+{
+  "meta": {
+    "label": "melodywritten",
+    "caseId": "rowboat-68-32",
+    "repeat": 1,
+    "context": true,
+    "date": "2026-09-27T20:59:04.558Z",
+    "gitSha": "27f35241affd4a1af0416c93d4dcc0778d23e0a4",
+    "gitDirty": false,
+    "model": "claude-opus-4-8",
+    "legacy": false,
+    "seconds": 48,
+    "plansFrom": "baseline",
+    "planFromSha": "10a45ae8da9897e614ca9cc65e5ef0d77424f569"
+  },
+  "common": {
+    "songTitle": "Row, Row, Row Your Boat",
+    "songArtist": "Traditional",
+    "songGenre": "Folk / Round",
+    "songNotes": "",
+    "style": "Cinematic",
+    "density": "Moderate",
+    "tempoFeel": "Moderate",
+    "key": "C",
+    "timeSignature": "6/8",
+    "bpm": 60,
+    "measures": 32
+  },
+  "voices": [
+    "Piccolo",
+    "Clarinet",
+    "Trombone",
+    "Double Bass"
+  ],
+  "plan": {
+    "melodySummary": "The melody opens intimately in the clarinet over a soft double bass pad, then passes to the piccolo as the texture blooms, before the trombone shoulders the tune through the two-thirds climax with the piccolo soaring above in countermelody. The dynamic arc rises in waves from a hushed !p! opening through a !ff! climax around mm.17-24, then settles back to a warm, resolved !mp! close.",
+    "sections": [
+      {
+        "label": "Phrase A — Awakening",
+        "measures": "mm.1-8",
+        "melodyCarrier": "Clarinet",
+        "countermelody": null,
+        "harmony": [
+          "Trombone"
+        ],
+        "bass": "Double Bass",
+        "rhythm": null,
+        "rests": [
+          "Piccolo"
+        ],
+        "notes": "Begin at !p!, long-breathed and legato; let each phrase float over the sustained pad, no accent. Trombone pad is softer, !pp!."
+      },
+      {
+        "label": "Phrase B — First Swell",
+        "measures": "mm.9-16",
+        "melodyCarrier": "Piccolo",
+        "countermelody": "Clarinet",
+        "harmony": [
+          "Trombone"
+        ],
+        "bass": "Double Bass",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Enter at !mp! and swell toward !mf! by m.16; bright and singing, riding the rising line. Clarinet weaves a gentle countermelody beneath, kept at !mp! or softer."
+      },
+      {
+        "label": "Phrase C — Climax",
+        "measures": "mm.17-24",
+        "melodyCarrier": "Trombone",
+        "countermelody": "Piccolo",
+        "harmony": [
+          "Clarinet"
+        ],
+        "bass": "Double Bass",
+        "rhythm": null,
+        "rests": [],
+        "notes": "The big arrival: play broad and !ff!, octave-strong and noble. Piccolo soars ABOVE with a descant countermelody at !f!; Double Bass reinforces every downbeat firmly."
+      },
+      {
+        "label": "Phrase D — Resolution",
+        "measures": "mm.25-32",
+        "melodyCarrier": "Clarinet",
+        "countermelody": "Trombone",
+        "harmony": [
+          "Trombone"
+        ],
+        "bass": "Double Bass",
+        "rhythm": null,
+        "rests": [
+          "Piccolo"
+        ],
+        "notes": "Pull back to a warm !mp!, tender and unhurried; ritard slightly into m.32 for a settled cadence. Trombone offers soft sustained counter-lines at !p!, bass drops to a low pedal."
+      }
+    ],
+    "instrumentRoles": {
+      "Piccolo": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.9-16"
+        ],
+        "instruction": "Rest in the opening and closing phrases. Carry the melody brightly at !mp!-!mf! in mm.9-16, then rise above the climax (mm.17-24) as a soaring descant countermelody at !f!, never covering the trombone tune."
+      },
+      "Clarinet": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.1-8",
+          "mm.25-32"
+        ],
+        "instruction": "Open the piece with a hushed, legato melody at !p!. In mm.9-16 drop to a supporting countermelody (!mp! or softer), thin harmony at the climax, then reclaim the tune tenderly at !mp! for the resolution."
+      },
+      "Trombone": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.17-24"
+        ],
+        "instruction": "Provide soft sustained pads (!pp!-!p!) under the outer phrases. Seize the melody broadly and nobly at !ff! through the two-thirds climax (mm.17-24), then return to warm counter-lines at !p! in the close."
+      },
+      "Double Bass": {
+        "primaryRole": "bass",
+        "melodySections": [],
+        "instruction": "Anchor the whole arrangement with sustained low pads, swelling with the dynamic arc: !pp! at the start, firm downbeat reinforcement at the !ff! climax, and a settled low pedal at !mp! for the ending."
+      }
+    },
+    "melodyAbc": "C3 C3 | C2 D E3 | E2 D E2 F | G6 | ccc GGG | EEE CCC | G2 F E2 D | C6 | G2 A B2 c | c2 B c2 d | e2 d e2 f | g6 | ggg eee | ccc GGG | A2 G F2 E | D6 | E2 F G2 A | G2 F E2 D | C2 D E2 F | G6 | ccc GGG | EEE CCC | G2 F E2 D | C6 | c2 B c2 d | e2 d c2 G | E2 F G2 A | G2 F E2 D | c3 G3 | E3 C3 | G2 F E2 D | C6 |]",
+    "chords": [
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "C",
+      "G7",
+      "C",
+      "C",
+      "C",
+      "Am",
+      "G7",
+      "C",
+      "C",
+      "Dm",
+      "G7",
+      "C",
+      "G7",
+      "C",
+      "C",
+      "C",
+      "Am",
+      "G7",
+      "C",
+      "C",
+      "C",
+      "F",
+      "G7",
+      "C",
+      "Am",
+      "G7",
+      "C"
+    ],
+    "key": "C",
+    "timeSignature": "6/8",
+    "measures": 32,
+    "source": "library",
+    "libraryId": "row-your-boat"
+  },
+  "parts": [
+    {
+      "instrName": "Piccolo",
+      "abc": "X:1\nT:Piccolo\nM:6/8\nL:1/8\nQ:1/4=60\nK:C clef=treble\nz6 | z6 | z6 | z6 |\nz6 | z6 | z6 | z6 |\n!mp!g2 a b2 c' | c'2 b c'2 d' | !mf!e'2 d' e'2 f' | g'6 |\n!mf!g'g'g' e'e'e' | c'c'c' ggg | !mf!a2 g f2 e | !mp!d6 |\n!f!e'2 f' g'2 f' | e'2 d' e'2 d' | c'2 d' e'2 f' | g'6 |\ng''-g''g'' e'e'e' | c''c''c'' g'g'g' | a'2 g' f'2 e' | d'6 |\n!mf!e'2 f' g'2 a' | g'2 f' e'2 d' | !mp!f'2 e' d'2 c' | d'2 e' f'2 g' |\ne'3 g'3 | e'3 d'3 | !p!g'2 f' e'2 d' | d'6 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 18: only 33% of this bar's notes (by length) belong to the chord G7, so the part may be playing against the harmony here",
+        "measure 24: only 0% of this bar's notes (by length) belong to the chord C, so the part may be playing against the harmony here",
+        "measure 32: only 0% of this bar's notes (by length) belong to the chord C, so the part may be playing against the harmony here"
+      ]
+    },
+    {
+      "instrName": "Clarinet",
+      "abc": "X:1\nT:Clarinet (in B♭)\nM:6/8\nL:1/8\nQ:1/4=60\nK:D clef=treble\n!p!D3 D3 | D2 E F3 | F2 E F2 G | A6 |\nddd AAA | FFF DDD | A2 G F2 E | D6 |\n!mp!F2 A F2 A | F2 A F2 A | !mf!D2 F B2 d | !mp!c2 e A2 c |\nd2 A d2 A | F2 A F2 A | !mp!G2 B E2 G | !p!A2 G F2 E |\n!mp!(F2 A) d2 F | !mp!c2 A F2 A | !mp!F2 A d2 F | !mp!(D2 F) A2 D |\n!mf!d2 d A2 A | !mf!F2 F D2 D | !mf!A2 G F2 E | !mf!D2 F A2 d |\n!mf!d2 c d2 e | !mf!f2 e d2 A | !mf!F2 G A2 B | !mf!A2 G F2 E |\n!f!d3 A3 | !f!F3 D3 | !mf!A2 G F2 E | !mp!D6 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Trombone",
+      "abc": "X:1\nT:Trombone\nM:6/8\nL:1/8\nQ:1/4=60\nK:C clef=bass\n!pp!C,6 | !pp!C,3 E,3 | !pp!E,6 | !p!G,3 D,3 |\n!p!C,3 E,3 | !p!G,3 C,3 | !mp!G,,3 D,3 | !mp!C,6 |\n!p!C,3 E,3 | !p!C,3 E,3 | !p!A,,3 C,3 | !mp!G,,3 D,3 |\n!mp!E,3 G,3 | !mp!C,3 E,3 | !mf!D,3 F,3 | !mf!G,,3 D,3 |\n!ff!E2 F G2 A | G2 F E2 D | C2 D E2 F | G6 |\n!ff!ccc GGG | EEE CCC | G2 F E2 D | C6 |\n!p!C,3 E,3 | !p!F,,3 C,3 | !p!D,3 F,3 | !p!G,,3 B,,3 |\n!p!C,3 E,3 | !p!F,,3 A,,3 | !p!G,,3 D,3 | !p!C,6 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Double Bass",
+      "abc": "X:1\nT:Double Bass\nM:6/8\nL:1/8\nQ:1/4=60\nK:C clef=bass\n!pp!C,,3 C,3 | !pp!C,,3 G,,3 | !pp!C,3 E,3 | !p!G,,3 D,3 |\n!p!C,,3 E,,3 | !p!C,,3 G,,3 | !mp!G,,3 D,3 | !mp!C,,3 C,3 |\n!mp!C,,2 E,, G,, C, E, | !mf!C,,2 G,, C, E, C, | !mf!A,,2 C, E, A,, C, | !mf!G,,2 D, G,, B,, D, |\n!f!C,3 E,3 | !f!C,,3 G,,3 | !f!D,3 F,3 | !f!G,,2 D, G,, D, B,, |\n!mf!C,2 E, G, C, E, | !mf!G,,2 D, G,, D, B,, | !mf!C,2 E, G, C, G,, | !mf!G,,2 B,, D, G,, D, |\n!f!C,2 E, G, C, E, | !f!C,2 E, G, C, G,, | !f!G,,2 D, B,, G,, D, | !f!C,2 G,, E, C, G,, |\n!f!C,2 E, G, C, E, | !f!F,,2 A,, C, F,, A,, | !f!G,,2 B,, D, G,, D, | !f!C,2 E, G, C, G,, |\n!mp!C,2 E, G, C, E, | !mp!F,,2 A,, C, F,, C, | !mp!G,,2 D, B,, G,, D, | !mp!C,2 G,, E, C, C, |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 26: only 17% of this bar's notes (by length) belong to the chord C, so the part may be playing against the harmony here",
+        "measure 28: only 33% of this bar's notes (by length) belong to the chord G7, so the part may be playing against the harmony here"
+      ]
+    }
+  ]
+}

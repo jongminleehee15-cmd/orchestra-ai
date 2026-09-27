@@ -927,6 +927,51 @@ per measure to pad or cut (`lengthOff`), so that retry scores 24 and loses.
 The first such case in 118 saved parts; the grid change did not cause it.
 The scorer also now counts an all-rests part as missing, not as clean.
 
+### Paired runs, and the melody in written pitch (2026-09-27)
+
+Two measurement changes first (9652351). `--plans-from` reruns only the parts
+on another label's saved plans, so an A/B shares melody, chords and roles;
+fresh plans vary enough to swamp small effects. And the scorer now checks
+melody bars by SOUNDING PITCH as well as by intervals: the interval check
+cannot see a tune played at the wrong transposition. (It also corrected a
+claim above: the legacy Ode Clarinet's bar 20 was right, not missed.)
+
+All numbers below share the baseline's 12 plans: "baseline" (10a45ae),
+"head" (9652351: written-pitch grid + the retry fix), "melodywritten"
+(27f3524: the melody handed to transposing parts in written pitch too).
+
+| Same 12 plans | baseline | head | melodywritten |
+|---|---|---|---|
+| Transposing parts' melody bars wrong (either check) | 15/136, 11.0% | 43/136, 31.6% | 14/136, 10.3% |
+| Other parts' melody bars wrong (prompts unchanged: noise) | 3.9% | 2.6% | 3.3% |
+| Transposition suspects | 6 | 2 | 1 |
+| Accompaniment off-chord | 9.8% | 7.8% | 6.4% |
+
+**Correction to the written-pitch grid's verdict above.** Measured on only
+Ode and Elise with fresh plans, it looked like a clean win. Paired across all
+6 cases it more than doubled transposing parts' melody errors (11.0% to
+31.6%; Twinkle's Flugelhorn 9 of its bars, Rowboat's Clarinet 2 bars at the
+wrong pitch that intervals pass). Likely mechanism: the grid and chords came
+in written pitch while the melody still came at concert pitch with orders to
+transpose, a mixed prompt. The melody change was measured against criteria
+committed before its run (27f3524's message): transposing melody errors fell
+21.3 points against 0.7 points of noise, guards held. **Kept.** But read the
+net honestly: against the original baseline, transposing melody accuracy is
+back to where it was (11.0% to 10.3%), not better; the gains that remain are
+transposition suspects (6 to 1), off-chord bars (9.8% to 6.4%) and melody
+clashes (Ode 7.8 to 0.3, Twinkle 3.8 to 0.8 per 100 part-bars).
+
+**Open, all seen against the baseline on the same plans:**
+- "Melody drowned by dynamics" worse in 3 of 6 cases (Ode 11 to 13.5,
+  Rowboat 11.5 to 17, Twinkle 6 to 11), already present in "head". Not a
+  target of any change here; the mechanism is unknown. The grid never showed
+  dynamics, before or after.
+- Twinkle: muddy low voicings 0 to 1-3.
+- Ode melody mismatch 0% to 3-12% (the item recorded above).
+- The retry prompt's melody messages now quote written pitch for transposing
+  parts (the check reads the written melody; verdicts are identical, 59 saved
+  parts), but nothing has checked how often retries fix melody bars.
+
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 
 A runtime-fetched corpus, same verbatim-melody contract as the library and

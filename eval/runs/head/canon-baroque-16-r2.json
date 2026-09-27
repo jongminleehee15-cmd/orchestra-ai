@@ -1,0 +1,181 @@
+{
+  "meta": {
+    "label": "head",
+    "caseId": "canon-baroque-16",
+    "repeat": 2,
+    "context": true,
+    "date": "2026-09-27T20:48:22.340Z",
+    "gitSha": "9652351eedfbd8b979aa3c75c4453d106d6c1c0d",
+    "gitDirty": false,
+    "model": "claude-opus-4-8",
+    "legacy": false,
+    "seconds": 22,
+    "plansFrom": "baseline",
+    "planFromSha": "10a45ae8da9897e614ca9cc65e5ef0d77424f569"
+  },
+  "common": {
+    "songTitle": "Canon in D (Theme)",
+    "songArtist": "Johann Pachelbel",
+    "songGenre": "Baroque Classical",
+    "songNotes": "",
+    "style": "Baroque",
+    "density": "Moderate",
+    "tempoFeel": "Moderate",
+    "key": "D",
+    "timeSignature": "4/4",
+    "bpm": 56,
+    "measures": 16
+  },
+  "voices": [
+    "Flute",
+    "Trumpet",
+    "Alto Sax",
+    "Bassoon"
+  ],
+  "plan": {
+    "melodySummary": "The theme migrates through the ensemble by phrase: Flute states it, Trumpet answers with terraced force, Alto Sax takes the flowing eighth-note descent, and Flute returns for the cadential close, with imitative echoes trailing each entry a bar later. The dynamic arc rises from a gentle !p! opening through a brilliant !f! Trumpet peak in mm.5-8, sustains full eighth-note momentum through mm.9-15, then resolves to a warm !mp! cadence.",
+    "sections": [
+      {
+        "label": "Phrase A",
+        "measures": "mm.1-4",
+        "melodyCarrier": "Flute",
+        "countermelody": "Alto Sax",
+        "harmony": [
+          "Alto Sax"
+        ],
+        "bass": "Bassoon",
+        "rhythm": null,
+        "rests": [
+          "Trumpet"
+        ],
+        "notes": "State the theme at !p! with clean Baroque articulation; Alto Sax enters one bar later imitating your opening two notes."
+      },
+      {
+        "label": "Phrase A'",
+        "measures": "mm.5-8",
+        "melodyCarrier": "Trumpet",
+        "countermelody": "Flute",
+        "harmony": [
+          "Alto Sax"
+        ],
+        "bass": "Bassoon",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Restate the theme at terraced !f!, bright and detached; Flute weaves a running eighth-note countermelody above."
+      },
+      {
+        "label": "Phrase B",
+        "measures": "mm.9-12",
+        "melodyCarrier": "Alto Sax",
+        "countermelody": "Flute",
+        "harmony": [
+          "Trumpet"
+        ],
+        "bass": "Bassoon",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Carry the continuous eighth-note sequences at !f!, shaping each step of the descending figure evenly; Flute echoes fragments a bar behind."
+      },
+      {
+        "label": "Phrase B' (Cadence)",
+        "measures": "mm.13-16",
+        "melodyCarrier": "Flute",
+        "countermelody": "Alto Sax",
+        "harmony": [
+          "Bassoon"
+        ],
+        "bass": "Bassoon",
+        "rhythm": null,
+        "rests": [
+          "Trumpet"
+        ],
+        "notes": "Take back the melody at !mp!, add a trill on the final cadence in m.16; Alto Sax provides a quieter inner descant beneath you."
+      }
+    ],
+    "instrumentRoles": {
+      "Flute": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.1-4",
+          "mm.13-16"
+        ],
+        "instruction": "Lead the opening statement at !p! and the cadential close at !mp!; between those, spin light eighth-note countermelodies and imitative echoes, always yielding volume to the current melody carrier. Trill at the final cadence."
+      },
+      "Trumpet": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.5-8"
+        ],
+        "instruction": "Tacet in the soft outer phrases. Enter for the bright !f! restatement in mm.5-8, then drop to sustained !mp! harmonic support in mm.9-12 well below the Alto Sax melody."
+      },
+      "Alto Sax": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.9-12"
+        ],
+        "instruction": "Provide imitative inner-voice entries and harmony in mm.1-8 at a level under the carrier, carry the driving eighth-note sequences at !f! in mm.9-12, then a soft descant under the Flute in mm.13-16."
+      },
+      "Bassoon": {
+        "primaryRole": "bass",
+        "melodySections": [],
+        "instruction": "Play a steady walking bass in quarters throughout, following the functional harmony; terrace your dynamics with each phrase (!p!, !f!, !f!, !mp!) to match the melody carrier, never overpowering it."
+      }
+    },
+    "melodyAbc": "f4 e4 | d4 c4 | B4 A4 | B4 c4 | d4 c4 | B4 A4 | G4 F4 | G4 E4 | f2 a2 g2 f2 | e2 d2 c2 B2 | A2 c2 B2 A2 | G2 B2 A2 G2 | f2 a2 g2 f2 | e2 g2 f2 e2 | d2 c2 B2 A2 | d6 z2 |]",
+    "chords": [
+      "D A",
+      "Bm F#m",
+      "G D",
+      "G A",
+      "D A",
+      "Bm F#m",
+      "G D",
+      "G A",
+      "D",
+      "Bm",
+      "G",
+      "A",
+      "D",
+      "F#m",
+      "G",
+      "D"
+    ],
+    "key": "D",
+    "timeSignature": "4/4",
+    "measures": 16,
+    "source": "library",
+    "libraryId": "canon-in-d"
+  },
+  "parts": [
+    {
+      "instrName": "Flute",
+      "abc": "X:1\nT:Flute\nM:4/4\nL:1/8\nQ:1/4=56\nK:D clef=treble\n!p!f4 e4 | d4 c4 | B4 A4 | B4 c4 |\n!p!a2 f2 e2 c2 | d2 B2 A2 F2 | G2 B2 d2 g2 | e2 c2 A2 c2 |\n!mp!f2 a2 f2 d2 | B2 d2 f2 a2 | g2 d2 B2 G2 | A2 c2 e2 c2 |\n!mf!f2 a2 g2 f2 | e2 g2 f2 e2 | d2 c2 B2 A2 | !mp!!trill!d6 z2 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Trumpet",
+      "abc": "X:1\nT:Trumpet (in B♭)\nM:4/4\nL:1/8\nQ:1/4=56\nK:E clef=treble\nz8 | z8 | z8 | z8 |\n!f!e4 d4 | c4 B4 | A4 G4 | A4 E4 |\n!mp!E4 G4 | A4 c4 | !mp!c4 A4 | B4 G4 |\nz8 | z8 | z8 | z8 |]",
+      "melodyWarnings": [
+        "measure 8: note 2 sits 2 semitones too low relative to the start of the bar; the tune moves -3 semitones there but your line moves -5 (canonical: G4 E4)"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Alto Sax",
+      "abc": "X:1\nT:Alto Sax (in E♭)\nM:4/4\nL:1/8\nQ:1/4=56\nK:B clef=treble\n!mp!B,2 F2 D2 F2 | ^G2 D2 ^A,2 D2 | e2 B2 ^G2 B2 | E2 B,2 ^A,2 F2 |\n!mf!B,2 F2 D2 F2 | ^G2 D2 ^A,2 D2 | e2 B2 ^G2 B2 | E2 B,2 F2 ^A,2 |\n!f!d2 f2 e2 d2 | c2 B2 A2 ^G2 | F2 A2 ^G2 F2 | E2 ^G2 F2 E2 |\n!p!B,2 F2 D2 B,2 | F2 ^A,2 ^C2 ^A,2 | E2 ^G2 B2 ^G2 | b4 F4 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Bassoon",
+      "abc": "X:1\nT:Bassoon\nM:4/4\nL:1/8\nQ:1/4=56\nK:D clef=bass\n!p!D,2 A,2 F,2 A,2 | B,2 F,2 C,2 F,2 | G,2 D,2 B,,2 D,2 | G,2 D,2 A,2 E,2 |\n!f!D,2 A,2 F,2 A,2 | B,2 F,2 C,2 F,2 | G,2 D,2 B,,2 D,2 | G,2 D,2 A,2 C,2 |\n!f!D,2 F,2 A,2 F,2 | B,,2 D,2 F,2 D,2 | G,,2 B,,2 D,2 B,,2 | A,,2 C,2 E,2 C,2 |\n!mp!D,2 A,2 F,2 D,2 | A,,2 E,2 C,2 A,,2 | G,,2 D,2 B,,2 G,,2 | D,4 A,,4 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    }
+  ]
+}

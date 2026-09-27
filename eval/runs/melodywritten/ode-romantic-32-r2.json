@@ -1,0 +1,245 @@
+{
+  "meta": {
+    "label": "melodywritten",
+    "caseId": "ode-romantic-32",
+    "repeat": 2,
+    "context": true,
+    "date": "2026-09-27T20:55:23.691Z",
+    "gitSha": "27f35241affd4a1af0416c93d4dcc0778d23e0a4",
+    "gitDirty": false,
+    "model": "claude-opus-4-8",
+    "legacy": false,
+    "seconds": 74,
+    "plansFrom": "baseline",
+    "planFromSha": "10a45ae8da9897e614ca9cc65e5ef0d77424f569"
+  },
+  "common": {
+    "songTitle": "Ode to Joy",
+    "songArtist": "Ludwig van Beethoven",
+    "songGenre": "Classical",
+    "songNotes": "",
+    "style": "Romantic",
+    "density": "Full",
+    "tempoFeel": "Moderate",
+    "key": "D",
+    "timeSignature": "4/4",
+    "bpm": 120,
+    "measures": 32
+  },
+  "voices": [
+    "Violin 1",
+    "Violin 2",
+    "Clarinet",
+    "French Horn",
+    "Cello"
+  ],
+  "plan": {
+    "melodySummary": "The famous theme migrates across the ensemble — beginning warmly in the French Horn, blossoming into Violin 1 for the soaring statements, dipping into the Cello for a tender interior, and returning triumphantly to the full violins for the climax before a gentle resolution. The dynamic arc rises from an intimate mezzo-piano through espressivo swells to a fortissimo high point at mm.21-24, then settles back into a hushed, glowing close.",
+    "sections": [
+      {
+        "label": "Phrase A — First Statement",
+        "measures": "mm.1-8",
+        "melodyCarrier": "French Horn",
+        "countermelody": "Clarinet",
+        "harmony": [
+          "Violin 2"
+        ],
+        "bass": "Cello",
+        "rhythm": "Violin 1",
+        "rests": [],
+        "notes": "Sing the theme !mp! espressivo, rounded and legato with a slight lingering on the phrase-end half notes; shape each two-bar arch with a gentle hairpin."
+      },
+      {
+        "label": "Phrase B — Answering Interior",
+        "measures": "mm.9-16",
+        "melodyCarrier": "Violin 1",
+        "countermelody": "Cello",
+        "harmony": [
+          "Violin 2",
+          "French Horn"
+        ],
+        "bass": "Cello",
+        "rhythm": "Clarinet",
+        "rests": [],
+        "notes": "Take up the melody !mf! with a warm singing tone, dotted lean into the FG turns; ease back to !mp! at m.16 to prepare the octave lift."
+      },
+      {
+        "label": "Phrase C — Octave Rise & Development",
+        "measures": "mm.17-24",
+        "melodyCarrier": "Violin 1",
+        "countermelody": "Clarinet",
+        "harmony": [
+          "Violin 2",
+          "French Horn"
+        ],
+        "bass": "Cello",
+        "rhythm": "Cello",
+        "rests": [],
+        "notes": "Ascend into the upper octave building !mf!→!f!→!ff!, broad and heroic through mm.21-24; give full bow weight to the climactic D at m.24 as the arrangement's peak."
+      },
+      {
+        "label": "Phrase D — Tender Interior",
+        "measures": "mm.25-28",
+        "melodyCarrier": "Cello",
+        "countermelody": "Clarinet",
+        "harmony": [
+          "Violin 2",
+          "French Horn"
+        ],
+        "bass": "Violin 1",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Draw the descending line !p! dolce on rich tenor strings, molto espressivo with a subtle rubato and a suspension-tinged sigh into m.28."
+      },
+      {
+        "label": "Phrase E — Final Resolution",
+        "measures": "mm.29-32",
+        "melodyCarrier": "Violin 1",
+        "countermelody": "French Horn",
+        "harmony": [
+          "Violin 2",
+          "Clarinet"
+        ],
+        "bass": "Cello",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Restate !mf! then bloom to a warm !f! at m.31, broadening with a ritardando; let the final whole note ring and diminuendo to !p! for a glowing close."
+      }
+    ],
+    "instrumentRoles": {
+      "Violin 1": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.9-16",
+          "mm.17-24",
+          "mm.29-32"
+        ],
+        "instruction": "Chief soaring voice: espressivo singing tone with expressive vibrato, dotted phrasing and phrase-end lingering. Drops to shimmering repeated-chord accompaniment in mm.1-8 and to a soft high pedal-bass role in mm.25-28. Shape every phrase with hairpins."
+      },
+      "Violin 2": {
+        "primaryRole": "harmony",
+        "melodySections": [],
+        "instruction": "Flowing inner harmony throughout — gently repeated chords and rising arpeggios with chromatic suspensions resolving downward. Stay one dynamic step under the melody carrier at all times, swelling only within the collective hairpins."
+      },
+      "Clarinet": {
+        "primaryRole": "countermelody",
+        "melodySections": [],
+        "instruction": "Lyrical chromatic countermelody and inner-voice color; weave secondary-dominant leading tones and suspensions between the given chords. In mm.9-16 provides flowing eighth-note motion; always espressivo but never covering the melody."
+      },
+      "French Horn": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.1-8"
+        ],
+        "instruction": "Opens the theme !mp! warm and noble, legato and rounded. Afterward becomes a sustaining harmonic anchor and adds a horn-call countermelody in mm.29-32; keep sustained notes softer than whichever instrument leads."
+      },
+      "Cello": {
+        "primaryRole": "bass",
+        "melodySections": [
+          "mm.25-28"
+        ],
+        "instruction": "Foundation in flowing arpeggiated bass lines with chromatic passing tones under the given harmonies. Steps into the spotlight for the tender interior mm.25-28 !p! molto espressivo, then returns to a resonant walking-arpeggio bass for the finale."
+      }
+    },
+    "melodyAbc": "F2 F2 G2 A2 | A2 G2 F2 E2 | D2 D2 E2 F2 | F3 E E4 | F2 F2 G2 A2 | A2 G2 F2 E2 | D2 D2 E2 F2 | E3 D D4 | E2 E2 F2 D2 | E2 FG F2 D2 | E2 FG F2 E2 | D2 E2 A,4 | F2 F2 G2 A2 | A2 G2 F2 E2 | D2 D2 E2 F2 | E3 D D4 | d2 d2 e2 f2 | f2 e2 d2 c2 | B2 B2 c2 d2 | d3 c c4 | d2 d2 e2 f2 | g2 f2 e2 d2 | c2 B2 A2 G2 | A3 F D4 | A2 A2 B2 A2 | G2 F2 E2 D2 | F2 E2 D2 C2 | D2 E2 F4 | A2 A2 G2 F2 | E2 D2 E2 F2 | D4 A,4 | D8 |]",
+    "chords": [
+      "D",
+      "A",
+      "D",
+      "A",
+      "D",
+      "A",
+      "D",
+      "A D",
+      "A",
+      "D",
+      "A",
+      "D A",
+      "D",
+      "A",
+      "D",
+      "A D",
+      "D",
+      "A",
+      "G",
+      "A",
+      "D",
+      "G",
+      "A",
+      "D",
+      "D",
+      "Bm",
+      "A",
+      "D",
+      "D",
+      "A",
+      "G",
+      "D"
+    ],
+    "key": "D",
+    "timeSignature": "4/4",
+    "measures": 32,
+    "source": "library",
+    "libraryId": "ode-to-joy"
+  },
+  "parts": [
+    {
+      "instrName": "Violin 1",
+      "abc": "X:1\nT:Violin 1\nM:4/4\nL:1/8\nQ:1/4=120\nK:D clef=treble\n!p!(A,2 D2 F2 A2) | !mp!(c2 A2 E2 A2) | !p!(F2 A2 d2 A2) | !mp!(c2 e2 A2 c2) |\n!p!(A,2 D2 F2 A2) | !mp!(c2 A2 E2 A2) | !p!(F2 A2 d2 f2) | !mp!(e2 c2 A,2 A2) |\n!mf!e2 e2 f2 d2 | e2 (fg) f2 d2 | !f!e2 (fg) f2 e2 | d2 e2 A,4 |\n!mf!(f2 f2) g2 a2 | !f!a2 g2 f2 e2 | d2 d2 (e2 f2) | !mf!e3 d d4 |\n!mf!(d2 d2) (e2 f2) | (f2 e2) (d2 c2) | (B2 B2) (c2 d2) | d3 c c4 |\n!mf!(d2 d2) (e2 f2) | (g2 f2) (e2 d2) | (c2 B2) (A2 G2) | A3 F D4 |\n!p!f4 (e2 c2) | !mp!d4 (c2 e2) | !p!f4 (e2 c2) | !mp!d3 c (B2 c2) |\n!mf!(A2 A2) (G2 F2) | (E2 D2) (E2 F2) | !f!D4 A,4 | !f!D8 |]",
+      "melodyWarnings": [
+        "measure 12: note 3 sits 12 semitones too low relative to the start of the bar; the tune moves -5 semitones there but your line moves -17 (canonical: D2 E2 A,4)"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Violin 2",
+      "abc": "X:1\nT:Violin 2\nM:4/4\nL:1/8\nQ:1/4=120\nK:D clef=treble\n!p!D3 E F2 F2 | !p!C2 E2 A,2 C2 | !mp!F2 D2 A,2 D2 | !mp!C2 A,2 (C4- |\n!mp!C2) D2 F2 E2 | !mp!C2 E2 A,2 C2 | !mf!F2 D2 A,2 D2 | !mf!G,2 A,2 D2 F2 |\n!mp!G,2 B,2 E2 D2 | !mp!C2 B,2 A,2 D2 | !mp!G,2 B,2 A,2 G,2 | !p!A,2 G,2 A,4 |\n!mf!A,2 D2 F2 E2 | !mf!C2 E2 A,2 C2 | !f!F2 D2 A,2 D2 | !mp!G,3 A, (D4) |\n!mp!A,2 A,2 B,2 C2 | A2 A2 G2 E2 | G,2 G,2 A,2 B,2 | A,3 A, A,4 |\n!mp!A,2 A,2 B,2 C2 | B2 B2 A2 F2 | E2 E2 D2 B,2 | A,3 A, D2 A,2 |\n!mf!c2 c2 d2 c2 | B2 A2 G2 F2 | A2 G2 F2 E2 | F2 G2 A2 G2 |\n!mf!c2 c2 B2 A2 | G2 F2 G2 A2 | !mp!F2 F2 E2 C2 | !p!D2 F2 A2 F2 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 9: only 25% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here",
+        "measure 11: only 25% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here",
+        "measure 25: only 25% of this bar's notes (by length) belong to the chord D, so the part may be playing against the harmony here",
+        "measure 29: only 25% of this bar's notes (by length) belong to the chord D, so the part may be playing against the harmony here",
+        "measure 30: only 25% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here",
+        "measure 31: only 0% of this bar's notes (by length) belong to the chord G, so the part may be playing against the harmony here"
+      ]
+    },
+    {
+      "instrName": "Clarinet",
+      "abc": "X:1\nT:Clarinet (in B♭)\nM:4/4\nL:1/8\nQ:1/4=120\nK:E clef=treble\n!mp!(E3 G3 B2 | !mp!(B3 ^A3 B2 | !mp!(G3 B3 e d) ( | !mf!(f d B3 A3) ( |\n!mp!(E3 G3 B2 | !mp!(B3 ^A3 B2 | !mf!(G3 B3 e f) ( | !mf!(f d B3 c) ( B2 |\n!mp!(A3 c e c) ( ^A2 | !mp!(B3 d ^c d) ( B2 | !mp!(A3 c e c) ( ^A2 | !mp!(B3 ^A3 B2 |\n!mf!(E3 G3 B2 | !mf!(B3 ^A3 B2 | !f!(G3 B3 e f) ( | !mf!(f d B3 c) ( B2 |\n!mf!(B3 G B c) (e d | (c B A F) (G F E F) | (A, C E G) (F E D C) | (B, D F B) (A F D B,) |\n!mf!(G B c d) (e f g e) | (c e f g) (a g f e) | (F A c A) (F E D C) | (B, D F D) (E G B, z) |\n!f!(g e f d) (e c B G) | (a f e c) (B A G F) | (g e f d) (e c B G) | (f d B G) (c B A F) |\n!mf!(B c d B) (A G F E) | (F A c A) (F E D C) | !mp!(G B, E G) (F E D C) | !p!(E G B G) (E B, E, z) |]",
+      "melodyWarnings": [
+        "17 bars didn't add up to a full measure and were padded or trimmed to fit so this part stays in time with the rest of the ensemble (Regenerate for a cleaner take)"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 9: only 0% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here",
+        "measure 11: only 0% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here"
+      ]
+    },
+    {
+      "instrName": "French Horn",
+      "abc": "X:1\nT:French Horn (in F)\nM:4/4\nL:1/8\nQ:1/4=120\nK:A clef=treble\n!mp!c2 c2 d2 e2 | e2 d2 c2 B2 | A2 A2 B2 c2 | c3 B B4 |\n!mf!c2 c2 d2 e2 | e2 d2 c2 B2 | A2 A2 B2 c2 | B3 A A4 |\n!mf!d3 F A2 F2 | E2 G2 A2 c2 | !mf!d3 F A2 d2 | !f!c2 B2 E4 |\n!f!A2 c2 e2 c2 | B2 G2 E2 B2 | A2 c2 e2 A2 | E2 A2 A4 |\n!mp!A,2 C2 E2 A2 | E2 G2 E2 B,2 | D2 F2 A2 F2 | E2 (E4) E,2 |\n!mf!A,2 C2 E2 c2 | F2 A2 F2 E2 | E2 D2 B,2 A,2 | !mp!(A,2 C2) E2 z2 |\n!mf!A2 G2 A2 B2 | F2 E2 D2 C2 | !mp!E2 D2 C2 B,2 | C2 D2 E4 |\n!mf!G2 A2 B2 G2 | F2 E2 D2 F2 | !mp!A2 E2 C2 E2 | !p!A,4 A,4 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 9: only 0% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here",
+        "measure 11: only 0% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here",
+        "measure 29: only 25% of this bar's notes (by length) belong to the chord D, so the part may be playing against the harmony here",
+        "measure 30: only 25% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here",
+        "measure 31: only 25% of this bar's notes (by length) belong to the chord G, so the part may be playing against the harmony here"
+      ]
+    },
+    {
+      "instrName": "Cello",
+      "abc": "X:1\nT:Cello\nM:4/4\nL:1/8\nQ:1/4=120\nK:D clef=bass\n!mp!D,2 A,2 D2 F2 | A,2 C2 E2 A,2 | !mp!D,2 F,2 A,2 D2 | E,2 A,2 C2 E2 |\n!mp!D,2 A,2 D2 F2 | A,2 C2 E2 A,2 | !mf!D,2 F,2 A,2 D2 | E,2 E2 D2 A,2 |\n!mp!E,2 G,2 B,2 E2 | A,2 C2 E2 A,2 | E,2 G,2 B,2 E2 | !mf!A,2 A,2 A,4 |\n!mf!D,2 F,2 A,2 D2 | A,2 C2 E2 A,2 | !mf!D,2 F,2 A,2 D2 | !mf!A,2 A,2 D2 D,2 |\n!mf!D,2 F,2 A,2 D2 | A,2 C,2 E,2 A,2 | G,2 B,,2 D,2 G,2 | A,2 E,2 A,2 C2 |\n!mf!D,2 F,2 A,2 D2 | A,2 D2 B,,2 D2 | E,2 G,2 B,,2 D2 | A,2 A,,2 D,2 F,2 |\n!p!A,2 A,2 B,2 A,2 | G,2 F,2 E,2 D,2 | F,2 E,2 D,2 C,2 | D,2 E,2 F,4 |\n!mf!A,2 C2 E2 C2 | G,2 A,2 B,2 A,2 | !f!D,2 A,2 G,2 F,2 | D,2 A,,2 D,2 D,,2 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 23: only 25% of this bar's notes (by length) belong to the chord A, so the part may be playing against the harmony here",
+        "measure 29: only 25% of this bar's notes (by length) belong to the chord D, so the part may be playing against the harmony here"
+      ]
+    }
+  ]
+}

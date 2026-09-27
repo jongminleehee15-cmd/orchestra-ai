@@ -1,0 +1,238 @@
+{
+  "meta": {
+    "label": "head",
+    "caseId": "twinkle-lowbrass-24",
+    "repeat": 2,
+    "context": true,
+    "date": "2026-09-27T20:53:56.966Z",
+    "gitSha": "9652351eedfbd8b979aa3c75c4453d106d6c1c0d",
+    "gitDirty": false,
+    "model": "claude-opus-4-8",
+    "legacy": false,
+    "seconds": 62,
+    "plansFrom": "baseline",
+    "planFromSha": "10a45ae8da9897e614ca9cc65e5ef0d77424f569"
+  },
+  "common": {
+    "songTitle": "Twinkle, Twinkle, Little Star",
+    "songArtist": "Traditional",
+    "songGenre": "Folk / Children's",
+    "songNotes": "",
+    "style": "Jazz",
+    "density": "Full",
+    "tempoFeel": "Moderate",
+    "key": "C",
+    "timeSignature": "4/4",
+    "bpm": 100,
+    "measures": 24
+  },
+  "voices": [
+    "Trumpet",
+    "Flugelhorn",
+    "Trombone",
+    "Tuba",
+    "Bassoon"
+  ],
+  "plan": {
+    "melodySummary": "The melody travels through the brass choir in a jazz idiom, opening warm on Flugelhorn, brightening to Trumpet at the high point, then dipping into Trombone and Bassoon for the bluesy inner phrases before returning to Trumpet for the swinging tag. The dynamic arc builds from a relaxed mp through a punchy ff peak around mm.16-18, then eases back to a confident mf resolution.",
+    "sections": [
+      {
+        "label": "Phrase A (Head)",
+        "measures": "mm.1-5",
+        "melodyCarrier": "Flugelhorn",
+        "countermelody": "Trombone",
+        "harmony": [
+          "Bassoon"
+        ],
+        "bass": "Tuba",
+        "rhythm": "Trumpet",
+        "rests": [],
+        "notes": "State the tune at !mf! with a warm legato swing feel, dotted-eighth+sixteenth pairs, leaning slightly late on the beat."
+      },
+      {
+        "label": "Phrase B (Development)",
+        "measures": "mm.6-10",
+        "melodyCarrier": "Trumpet",
+        "countermelody": "Flugelhorn",
+        "harmony": [
+          "Bassoon",
+          "Trombone"
+        ],
+        "bass": "Tuba",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Take over brightly at !f!, adding blue-note ♭3/♭7 grace slides against the ii-V motion, accenting the off-beats."
+      },
+      {
+        "label": "Phrase C (Bluesy Turn)",
+        "measures": "mm.11-15",
+        "melodyCarrier": "Trombone",
+        "countermelody": "Trumpet",
+        "harmony": [
+          "Flugelhorn",
+          "Bassoon"
+        ],
+        "bass": "Tuba",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Carry the line at !mf! with fat swing and scoops into the chromatic notes, laying back behind the beat over the Em7-A7 color."
+      },
+      {
+        "label": "Phrase D (High Point)",
+        "measures": "mm.16-20",
+        "melodyCarrier": "Trumpet",
+        "countermelody": "Flugelhorn",
+        "harmony": [
+          "Trombone",
+          "Bassoon"
+        ],
+        "bass": "Tuba",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Climax at !ff! with bright, cutting attack and sharp off-beat accents; drive the descending line hard into the turnaround."
+      },
+      {
+        "label": "Phrase E (Tag / Resolution)",
+        "measures": "mm.21-24",
+        "melodyCarrier": "Flugelhorn",
+        "countermelody": "Trumpet",
+        "harmony": [
+          "Trombone",
+          "Bassoon"
+        ],
+        "bass": "Tuba",
+        "rhythm": null,
+        "rests": [],
+        "notes": "Resolve at !mf! with a mellow, rounded tone; relax the swing and land the final C6 with a soft-shouldered hold."
+      }
+    ],
+    "instrumentRoles": {
+      "Trumpet": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.6-10",
+          "mm.16-20"
+        ],
+        "instruction": "Bright lead voice; carry the melody at f-ff peaks with crisp off-beat accents and blue-note bends. When not on melody, play short syncopated comping stabs with rests between, always softer than the current melody carrier."
+      },
+      "Flugelhorn": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.1-5",
+          "mm.21-24"
+        ],
+        "instruction": "Warm, dark melody voice for the opening and tag at mp-mf. In countermelody passages weave lyrical fills into the melody's rests, staying under the lead."
+      },
+      "Trombone": {
+        "primaryRole": "melody",
+        "melodySections": [
+          "mm.11-15"
+        ],
+        "instruction": "Fat swinging melody through the bluesy turn at mf with scoops and smears. Elsewhere provide countermelody and syncopated tenor-range stabs, never held pads."
+      },
+      "Bassoon": {
+        "primaryRole": "harmony",
+        "melodySections": [],
+        "instruction": "Supply extended-chord guide tones (3rds, 7ths, 9ths) as short syncopated inner-voice stabs with rests between; add occasional ♭3/♭7 blue-note fills, always beneath the melody carrier's dynamic."
+      },
+      "Tuba": {
+        "primaryRole": "bass",
+        "melodySections": [],
+        "instruction": "Walk the bass in steady swung quarters throughout, outlining roots and inserting chromatic approach and ii-V passing tones; lock with the swing feel and stay under the melody at all times."
+      }
+    },
+    "melodyAbc": "C2 C2 G2 G2 | A2 A2 G4 | F2 F2 E2 E2 | D2 D2 C4 | G2 G2 F2 F2 | E2 E2 D4 | G2 G2 F2 F2 | E2 E2 D4 | C2 C2 G2 G2 | A2 A2 G4 | F2 F2 E2 E2 | D2 D2 C4 | e2 c2 =B2 c2 | d2 A2 A4 | G2 =F2 E2 D2 | C2 E2 G4 | c3 d e2 g2 | a2 g2 e2 d2 | c2 G2 A2 G2 | E2 D2 C2 =B,2 | A,2 C2 E2 G2 | c2 e2 d2 =B2 | c2 E2 G,2 =B,2 | C6 z2 |]",
+    "chords": [
+      "C",
+      "F C",
+      "F C",
+      "G C",
+      "C G7",
+      "C G7",
+      "C G7",
+      "C G7",
+      "C",
+      "F C",
+      "F C",
+      "G C",
+      "C6",
+      "Dm7 G7",
+      "Em7 A7",
+      "Dm7 G7",
+      "C6",
+      "Am7",
+      "Dm7",
+      "G7",
+      "Am7 D7",
+      "F Fm",
+      "C/E G7",
+      "C6"
+    ],
+    "key": "C",
+    "timeSignature": "4/4",
+    "measures": 24,
+    "source": "library",
+    "libraryId": "twinkle-twinkle"
+  },
+  "parts": [
+    {
+      "instrName": "Trumpet",
+      "abc": "X:1\nT:Trumpet (in B♭)\nM:4/4\nL:1/8\nQ:1/4=100\nK:D clef=treble\n!mf!A,2 (C2 D2) A,2 | !mp!D2 A,2 (F2 E2) | !mp!G,2 (B,2 C2) B,2 | !mf!A,2 (C2 D2) C2 |\n!f!D2 (E2 F2) A,2 | !f!F2 F2 E4 | !f!A2 A2 G2 G2 | !f!F2 F2 E4 |\n!f!D2 D2 A2 A2 | !ff!B2 B2 A4 | !mp!G,2 (B,2 C2) D2 | !mp!A,2 (C2 D2) A,2 |\n!mf!(d2 c2) (B2 A2) | !mp!(e2 d2) c2 A2 | !mp!(f2 e2) d2 B2 | !f!D2 F2 A4 |\n!f!d3 e f2 a2 | !f!b2 a2 f2 e2 | !f!d2 A2 B2 A2 | !ff!F2 E2 D2 =C2 |\n!mf!A,2 (C2 E2) G2 | !mf!(B2 A2) (G2 D2) | !mp!(F2 A2) (D2 =C2) | !mf!D6 z2 |]",
+      "melodyWarnings": [
+        "measure 20: note 4 sits 1 semitone too low relative to the start of the bar; the tune moves -5 semitones there but your line moves -6 (canonical: E2 D2 C2 =B,2)"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": []
+    },
+    {
+      "instrName": "Flugelhorn",
+      "abc": "X:1\nT:Flugelhorn (in B♭)\nM:4/4\nL:1/8\nQ:1/4=100\nK:D clef=treble\n!mf!D2 D2 A2 A2 | B2 B2 A4 | E2 E2 D4 | A2 A2 G2 G2 |\nz A2 G2 z G2 | z D2 A,2 z A,2 | z B,2 A,4 z | !mp!A,2 C2 D2 A,2 |\nz d2 c2 z A2 | z2 e2 d2 B2 | z2 A2 B2 z A | z e2 d2 z B2 |\nD6 z2 | z8 | z8 | z8 |\nz8 | z8 | z8 | z8 |\nz8 | z8 | z8 | z8 |]",
+      "melodyWarnings": [
+        "the part stopped at measure 13; measures 14-24 are written as rests (Regenerate for a full take)",
+        "2 bars didn't add up to a full measure and were padded or trimmed to fit so this part stays in time with the rest of the ensemble (Regenerate for a cleaner take)",
+        "measure 3: expected 4 notes (F2 F2 E2 E2) but the part has 3",
+        "measure 4: expected 3 notes (D2 D2 C4) but the part has 4",
+        "measure 5: expected 4 notes (G2 G2 F2 F2) but the part has 5",
+        "measure 21: expected 4 notes (A,2 C2 E2 G2) but the part has 1",
+        "measure 22: expected 4 notes (c2 e2 d2 =B2) but the part has 1",
+        "measure 23: expected 4 notes (c2 E2 G,2 =B,2) but the part has 1",
+        "measure 24: expected 2 notes (C6 z2) but the part has 1"
+      ],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 10: only 33% of this bar's notes (by length) belong to the chord F C, so the part may be playing against the harmony here",
+        "measure 11: only 20% of this bar's notes (by length) belong to the chord F C, so the part may be playing against the harmony here"
+      ]
+    },
+    {
+      "instrName": "Trombone",
+      "abc": "X:1\nT:Trombone\nM:4/4\nL:1/8\nQ:1/4=100\nK:C clef=bass\n!mf!C,2 E,2 G,2 C2 | !mf!C2 G,2 E,2 C,2 | !mf!F,2 A,2 C2 A,2 | !mf!G,2 B,2 C2 B,2 |\n!mf!C2 D2 E2 G,2 | !mf!C2 z E, G,2 z E, | !mf!C2 z A, G,2 z F, | !mf!C2 z B, C2 z G, |\n!mf!C2 E2 G,2 C2 | !mf!F,2 A,2 D2 F,2 | !mf!F2 F2 E2 E2 | !mf!D2 D2 C4 |\n!mf!E2 C2 =B,2 C2 | !f!D2 A,2 A,4 | !f!G2 =F2 E2 D2 | !mf!C2 z G, E,2 z G, |\n!mf!A,2 C2 E2 z A, | !mf!D,2 F,2 A,2 z D | !mf!G,2 =F,2 D,2 z G, | !mf!A,2 z E, C2 z A, |\n!mf!A,2 C2 E,2 z A, | !mf!F,2 A,2 A,2 =A,2 | !mf!C2 z G, G,2 z =B, | !mp!C,6 z2 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 18: only 29% of this bar's notes (by length) belong to the chord Am7, so the part may be playing against the harmony here",
+        "measure 20: only 0% of this bar's notes (by length) belong to the chord G7, so the part may be playing against the harmony here"
+      ]
+    },
+    {
+      "instrName": "Tuba",
+      "abc": "X:1\nT:Tuba\nM:4/4\nL:1/8\nQ:1/4=100\nK:C clef=bass\n!mp!C,,2 E,,2 G,,2 A,,2 | F,,2 G,,2 C,2 B,,2 | F,,2 A,,2 C,2 A,,2 | G,,2 F,,2 E,,2 D,,2 |\n!mf!C,2 E,,2 G,,2 F,,2 | E,,2 G,,2 C,2 B,,2 | G,,2 B,,2 C,2 A,,2 | E,,2 G,,2 C,2 B,,2 |\n!mf!C,2 E,,2 G,,2 A,,2 | F,,2 A,,2 C,2 F,,2 | F,,2 E,,2 A,,2 C,2 | G,,2 F,,2 E,,2 D,,2 |\n!f!C,2 G,,2 E,,2 C,,2 | D,,2 A,,2 G,,2 B,,2 | E,,2 B,,2 A,,2 E,,2 | D,,2 A,,2 G,,2 B,,2 |\n!mf!C,2 G,,2 E,,2 A,,2 | A,,2 E,,2 C,2 B,,2 | D,,2 F,,2 A,,2 G,,2 | G,,2 F,,2 D,,2 B,,,2 |\n!f!A,,2 E,,2 D,,2 A,,2 | F,,2 A,,2 F,,2 A,,,2 | C,2 G,,2 G,,2 B,,,2 | !mp!C,,6 z2 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 7: only 25% of this bar's notes (by length) belong to the chord C G7, so the part may be playing against the harmony here"
+      ]
+    },
+    {
+      "instrName": "Bassoon",
+      "abc": "X:1\nT:Bassoon\nM:4/4\nL:1/8\nQ:1/4=100\nK:C clef=bass\n!mf!C,2 z E,2 G,2 z | !mf!F,2 A,,2 C,2 B,,2 | !mf!F,2 A,,2 C,2 A,,2 | !mf!G,,2 B,,2 C,2 D,2 |\n!mf!C,2 E,2 G,2 F,2 | !mf!E,2 z C,2 G,,2 z | !mf!G,,2 B,,2 C,2 A,,2 | !mp!E,2 z G,,2 C,2 z |\n!mf!C,2 E,2 G,2 A,2 | !mf!F,2 A,,2 C,2 F,2 | !mf!F,,2 A,,2 C,2 z E, | !mf!G,,2 B,,2 C,2 D,2 |\n!mf!C,2 z E,2 G,,2 z | !mf!D,2 F,2 G,,2 B,,2 | !mf!E,2 G,2 A,,2 E,2 | !mf!D,2 F,2 G,,2 B,,2 |\n!mf!A,,2 C,2 E,2 z A,, | !mf!D,2 F,2 A,,2 z D, | !f!G,,2 B,,2 D,2 z F, | !f!A,,2 C,2 E,2 z D, |\n!f!A,,2 E,2 D,2 A,,2 | !f!F,2 A,,2 F,2 A,,2 | !mf!C,2 G,,2 G,,2 B,,2 | !mp!C,6 z2 |]",
+      "melodyWarnings": [],
+      "rangeWarnings": [],
+      "harmonyWarnings": [
+        "measure 7: only 25% of this bar's notes (by length) belong to the chord C G7, so the part may be playing against the harmony here",
+        "measure 18: only 29% of this bar's notes (by length) belong to the chord Am7, so the part may be playing against the harmony here",
+        "measure 20: only 14% of this bar's notes (by length) belong to the chord G7, so the part may be playing against the harmony here"
+      ]
+    }
+  ]
+}
