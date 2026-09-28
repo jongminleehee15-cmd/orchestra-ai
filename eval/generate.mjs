@@ -227,9 +227,22 @@ async function writeParts(srv, commonIn, voices, plan) {
 }
 let failStreak = 0;
 
+// Keep Windows awake while the batch runs (a paid run once died when the
+// machine slept two minutes in). A helper asks for "system required" through
+// SetThreadExecutionState, the way a media player does: nothing is changed in
+// the power settings, and the request ends when the helper exits.
+function keepAwake() {
+  if (process.platform !== "win32" || dryRun) return null;
+  const ps = `Add-Type -Name P -Namespace W -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);'; [W.P]::SetThreadExecutionState([uint32]2147483649) | Out-Null; while ($true) { Start-Sleep -Seconds 60 }`;
+  const child = spawn("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: "ignore" });
+  child.on("error", () => {}); // no PowerShell: run anyway, just unprotected
+  return child;
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 const srv = await startServer();
-const stop = () => { if (srv.alive()) srv.child.kill(); };
+const awake = keepAwake();
+const stop = () => { if (srv.alive()) srv.child.kill(); if (awake && awake.exitCode === null) awake.kill(); };
 process.on("SIGINT", () => { stop(); process.exit(130); });
 try {
   console.log(`\nServer: pid ${srv.child.pid} on port ${srv.port}, model ${srv.health.model}, API key ${srv.health.hasKey ? "set" : "MISSING"}. Log: ${srv.logFile}`);
