@@ -1020,6 +1020,41 @@ identical. The cost: melody bars with another part above the tune rose from
 accompaniment where it was. Live generation should do better (parts are
 told where the tune will sit); the paired run below measures it.
 
+**Live, paired (`eval/runs/rangefix`, 12 arrangements on the baseline's plans,
+against `melodywritten`; criteria committed in 06e2423 before the run).**
+Kept: the primary criterion and every guard met.
+
+| Same 12 plans | melodywritten | rangefix |
+|---|---|---|
+| Melody notes outside the comfortable band | 5.3% | 0.6% |
+| Hard-range notes shipped (read correctly) | 7 | 0 |
+| Melody interval mismatch / wrong pitch | 6.6% / 2.8% | 2.1% / 0.0% |
+| Accompaniment off-chord | 6.4% | 4.8% |
+| Melody clashes per 100 part-bars | 1.66 | 1.50 |
+| Melody bars with a part above the tune | 38.2% | 39.9% |
+
+The prompt did nearly all of it: the after-generation move fired once in 12
+arrangements (an English Horn phrase, up an octave). Tuba, Trombone, Tenor
+Sax and Cello melody notes outside their band all went to 0; Piccolo 13 to 4
+of 56 remains. The burying cost live was 1.7 points, not the 5.8 of the
+offline worst case. The melody-accuracy gains are larger than this change
+was aimed at and may partly be run-to-run noise (n = 12 arrangements per
+side); a plausible cause is fewer octave breaks inside bars, which the
+interval check flags.
+
+The user's own case, rerun in the browser (Canon in D, Cello + Clarinet):
+the Cello wrote its melody as F#4 down to A3 (`F4 E4 | D4 C4 | B,4 A,4 |
+B,4 C4` in D, bass clef) where it had written F#5 down to A4, with no
+adjustment needed and no warnings. Those bars carry ledger lines above the
+bass staff; a professional part would switch to tenor clef there, a
+readability improvement still open.
+
+**Also found on the way (fixed).** The first paid run died when the machine
+slept two minutes in: 11 of 12 arrangements came back with missing parts,
+and the generator saved them. It now saves no arrangement with a failed
+part, stops after 3 failures in a row, and holds a keep-awake request while
+it runs.
+
 ## Open Hymnal source (`server/lib/openhymnal.js`, 2026-09-14)
 
 A runtime-fetched corpus, same verbatim-melody contract as the library and
