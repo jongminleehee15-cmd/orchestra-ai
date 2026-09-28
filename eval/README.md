@@ -20,6 +20,7 @@ node eval/generate.mjs --label <name> --plans-from <label> --yes
 node eval/report.mjs <baseline-label> <new-label>
 # 5. Once in a while, listen blind.
 node eval/blind.mjs make <baseline-label> <new-label>
+node eval/blind.mjs serve eval/blind/<timestamp>   # open the printed link; Ctrl+C to stop
 node eval/blind.mjs score eval/blind/<timestamp>
 ```
 

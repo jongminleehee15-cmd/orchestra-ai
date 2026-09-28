@@ -130,6 +130,36 @@ function score() {
   console.log("One listener and a handful of pairs is a direction, not proof. Repeat with other listeners before acting on a close result.");
 }
 
+// Serve a kit on localhost so the pages play in any browser. Opened straight
+// from disk (file://), a browser may refuse to fetch the instrument sounds.
+async function serve() {
+  const dir = rest[0] || die("usage: node eval/blind.mjs serve <dir>");
+  if (!existsSync(join(dir, "pair-01.html"))) die(`no pair-01.html in ${dir}`);
+  const { createServer } = await import("node:http");
+  const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript" };
+  const server = createServer((req, res) => {
+    const name = decodeURIComponent(req.url.split("?")[0]).replace(/^\/+/, "") || "index.html";
+    // Pages and the player script only: never key.json, never outside the kit.
+    if (!/^(pair-\d+\.html|abcjs-basic-min\.js|index\.html)$/.test(name)) { res.writeHead(404); res.end(); return; }
+    if (name === "index.html") {
+      const pages = readdirSync(dir).filter((f) => /^pair-\d+\.html$/.test(f)).sort();
+      res.writeHead(200, { "Content-Type": types[".html"] });
+      res.end(`<!doctype html><meta charset="utf-8"><title>Listening test</title><body style="font-family:Georgia,serif;max-width:40rem;margin:2rem auto"><h1>Listening test</h1><p>Rate each pair in results.csv. Don't open key.json until you're done.</p><ol>${pages.map((p) => `<li><a href="${p}">${p.replace(".html", "")}</a></li>`).join("")}</ol></body>`);
+      return;
+    }
+    try {
+      const body = readFileSync(join(dir, name));
+      res.writeHead(200, { "Content-Type": types[name.slice(name.lastIndexOf("."))] });
+      res.end(body);
+    } catch { res.writeHead(404); res.end(); }
+  });
+  server.listen(0, "127.0.0.1", () => {
+    console.log(`Listening test at http://127.0.0.1:${server.address().port}/  (Ctrl+C to stop)`);
+    console.log(`Write your answers in ${join(dir, "results.csv")}`);
+  });
+}
+
 if (cmd === "make") make();
 else if (cmd === "score") score();
-else die("usage: node eval/blind.mjs make <labelA> <labelB> ... | score <dir>");
+else if (cmd === "serve") await serve();
+else die("usage: node eval/blind.mjs make <labelA> <labelB> ... | serve <dir> | score <dir>");
