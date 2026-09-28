@@ -210,14 +210,22 @@ async function writeParts(srv, commonIn, voices, plan) {
       });
       done.push({ instrName, abc: r.abc, melodyWarnings: r.melodyWarnings || [], rangeWarnings: r.rangeWarnings || [], harmonyWarnings: r.harmonyWarnings || [], adjustments: r.adjustments || [] });
       console.log(`    ${instrName}: ${((Date.now() - t1) / 1000).toFixed(0)}s`);
+      failStreak = 0;
     } catch (e) {
-      // The app marks the part as failed and carries on; so does this.
       done.push({ instrName, abc: null, error: e.message });
       console.log(`    ${instrName}: FAILED ${e.message}`);
+      // Several failures in a row mean the network or the API is down, not
+      // that these parts are hard (seen 2026-09-27: the machine slept mid-run,
+      // and on waking every remaining call failed at once). Stop, rather than
+      // burn through the batch.
+      if (++failStreak >= 3) {
+        throw Object.assign(new Error(`${failStreak} parts failed in a row (last: ${e.message}); the network or the API looks down, so the batch stopped. Re-run the same command to resume.`), { abort: true });
+      }
     }
   }
   return { common, voices, plan, parts: done };
 }
+let failStreak = 0;
 
 // ── main ─────────────────────────────────────────────────────────────────────
 const srv = await startServer();
@@ -241,8 +249,18 @@ try {
       try {
         run = await arrange(srv, c, songs, saved);
       } catch (e) {
+        if (e.abort) throw e;
         // Nothing is saved, so re-running the same command retries it.
         console.log(`  FAILED, not saved: ${e.message}`);
+        failed.push(`${c.id} r${r}`);
+        continue;
+      }
+      // An arrangement with a failed part is not saved either: the app carries
+      // on without the part, but a measurement must not score a missing part
+      // as data (every metric would read the silence as clean).
+      const lost = run.parts.filter((p) => !p.abc).map((p) => p.instrName);
+      if (lost.length) {
+        console.log(`  NOT SAVED: part(s) failed (${lost.join(", ")}); re-run the same command to retry.`);
         failed.push(`${c.id} r${r}`);
         continue;
       }
